@@ -2,17 +2,21 @@ import type { Server } from "node:http";
 import { randomInt } from "node:crypto";
 import { WebSocket, WebSocketServer } from "ws";
 import {
+  MAX_CONTROLLERS,
   ROOM_CODE_ALPHABET,
   ROOM_CODE_LENGTH,
   type ClientMessage,
   type ServerMessage,
 } from "../shared/protocol";
 
-/** One computer (the host, showing the game) and at most one phone (the controller). */
+/** One computer (the host, showing the game) and its phones, one per seat. */
 interface Room {
+  code: string;
   host: WebSocket;
-  controller?: WebSocket;
+  controllers: (WebSocket | undefined)[];
 }
+
+type Seat = { room: Room; slot: number | "host" };
 
 function send(ws: WebSocket | undefined, msg: ServerMessage) {
   if (ws?.readyState === WebSocket.OPEN) ws.send(JSON.stringify(msg));
@@ -20,10 +24,26 @@ function send(ws: WebSocket | undefined, msg: ServerMessage) {
 
 function parse(raw: string): ClientMessage | null {
   try {
-    const msg = JSON.parse(raw);
-    if (msg?.type === "create-room") return { type: "create-room" };
-    if (msg?.type === "join-room" && typeof msg.code === "string")
-      return { type: "join-room", code: msg.code };
+    const m = JSON.parse(raw);
+    const slot = m?.slot;
+    const slotOk =
+      slot === undefined ||
+      (Number.isInteger(slot) && slot >= 0 && slot < MAX_CONTROLLERS);
+    switch (m?.type) {
+      case "create-room":
+        return { type: "create-room" };
+      case "join-room":
+        if (typeof m.code === "string" && slotOk)
+          return { type: "join-room", code: m.code, slot };
+        break;
+      case "to-host":
+        if ("data" in m) return { type: "to-host", data: m.data };
+        break;
+      case "to-controller":
+        if ("data" in m && slotOk)
+          return { type: "to-controller", slot, data: m.data };
+        break;
+    }
   } catch {}
   return null;
 }
@@ -32,8 +52,8 @@ function parse(raw: string): ClientMessage | null {
 export function attachRooms(http: Server, path = "/ws", heartbeatMs = 15_000) {
   const wss = new WebSocketServer({ noServer: true, maxPayload: 16 * 1024 });
   const rooms = new Map<string, Room>();
-  /** Which room each connection is currently in. */
-  const membership = new Map<WebSocket, string>();
+  /** Where each connection currently sits. */
+  const seats = new Map<WebSocket, Seat>();
 
   // Only claim our own path, so other upgrade listeners (Vite HMR) still work.
   http.on("upgrade", (req, socket, head) => {
@@ -50,20 +70,71 @@ export function attachRooms(http: Server, path = "/ws", heartbeatMs = 15_000) {
     }
   }
 
-  /** A room lives exactly as long as its host; a controller can come and go. */
+  /** A room lives exactly as long as its host; phones can come and go. */
   function leave(ws: WebSocket) {
-    const code = membership.get(ws);
-    const room = code && rooms.get(code);
-    if (!code || !room) return;
-    membership.delete(ws);
-    if (room.host === ws) {
-      rooms.delete(code);
-      if (room.controller) membership.delete(room.controller);
-      send(room.controller, { type: "peer-left" });
+    const seat = seats.get(ws);
+    if (!seat) return;
+    seats.delete(ws);
+    const { room, slot } = seat;
+    if (slot === "host") {
+      rooms.delete(room.code);
+      room.controllers.forEach((c, i) => {
+        if (!c) return;
+        seats.delete(c);
+        send(c, { type: "peer-left", slot: i });
+      });
     } else {
-      room.controller = undefined;
-      send(room.host, { type: "peer-left" });
+      room.controllers[slot] = undefined;
+      send(room.host, { type: "peer-left", slot });
     }
+  }
+
+  function join(ws: WebSocket, rawCode: string, wanted?: number) {
+    leave(ws);
+    const code = rawCode.trim().toUpperCase();
+    const room = rooms.get(code);
+    if (!room) return send(ws, { type: "error", reason: "room-not-found" });
+    const free = (i: number) => i < MAX_CONTROLLERS && !room.controllers[i];
+    let slot = wanted !== undefined && free(wanted) ? wanted : 0;
+    while (slot < MAX_CONTROLLERS && !free(slot)) slot++;
+    if (slot >= MAX_CONTROLLERS)
+      return send(ws, { type: "error", reason: "room-full" });
+    room.controllers[slot] = ws;
+    seats.set(ws, { room, slot });
+    send(ws, { type: "room-joined", code, slot });
+    send(room.host, { type: "peer-joined", slot });
+  }
+
+  function handle(ws: WebSocket, msg: ClientMessage) {
+    const seat = seats.get(ws);
+    switch (msg.type) {
+      case "create-room": {
+        leave(ws);
+        const room: Room = { code: newCode(), host: ws, controllers: [] };
+        rooms.set(room.code, room);
+        seats.set(ws, { room, slot: "host" });
+        return send(ws, { type: "room-created", code: room.code });
+      }
+      case "join-room":
+        return join(ws, msg.code, msg.slot);
+      case "to-host":
+        if (!seat || seat.slot === "host") break;
+        return send(seat.room.host, {
+          type: "from-controller",
+          slot: seat.slot,
+          data: msg.data,
+        });
+      case "to-controller": {
+        if (seat?.slot !== "host") break;
+        const targets =
+          msg.slot === undefined
+            ? seat.room.controllers
+            : [seat.room.controllers[msg.slot]];
+        for (const c of targets) send(c, { type: "from-host", data: msg.data });
+        return;
+      }
+    }
+    send(ws, { type: "error", reason: "bad-message" });
   }
 
   // A phone that drops off wifi never says goodbye; pings find it.
@@ -82,29 +153,10 @@ export function attachRooms(http: Server, path = "/ws", heartbeatMs = 15_000) {
     ws.on("pong", () => alive.add(ws));
     ws.on("close", () => leave(ws));
     ws.on("error", () => ws.terminate());
-
     ws.on("message", (raw) => {
       const msg = parse(String(raw));
-      if (!msg) return send(ws, { type: "error", reason: "bad-message" });
-
-      if (msg.type === "create-room") {
-        leave(ws);
-        const code = newCode();
-        rooms.set(code, { host: ws });
-        membership.set(ws, code);
-        send(ws, { type: "room-created", code });
-      } else {
-        leave(ws);
-        const code = msg.code.trim().toUpperCase();
-        const room = rooms.get(code);
-        if (!room) return send(ws, { type: "error", reason: "room-not-found" });
-        if (room.controller)
-          return send(ws, { type: "error", reason: "room-full" });
-        room.controller = ws;
-        membership.set(ws, code);
-        send(ws, { type: "room-joined", code });
-        send(room.host, { type: "peer-joined" });
-      }
+      if (msg) handle(ws, msg);
+      else send(ws, { type: "error", reason: "bad-message" });
     });
   });
 }

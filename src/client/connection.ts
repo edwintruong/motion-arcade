@@ -10,16 +10,35 @@ export interface Connection {
 }
 
 export interface ConnectionHandlers {
+  /** Called on the first connection and again after every reconnect. */
   onOpen(conn: Connection): void;
   onMessage(msg: ServerMessage): void;
+  /** The link dropped; a reconnect is already being attempted. */
   onClose(): void;
 }
 
-export function connect(handlers: ConnectionHandlers): void {
+export function connect(handlers: ConnectionHandlers): Connection {
   const scheme = location.protocol === "https:" ? "wss" : "ws";
-  const ws = new WebSocket(`${scheme}://${location.host}/ws`);
-  const conn: Connection = { send: (msg) => ws.send(JSON.stringify(msg)) };
-  ws.onopen = () => handlers.onOpen(conn);
-  ws.onmessage = (e) => handlers.onMessage(JSON.parse(e.data));
-  ws.onclose = () => handlers.onClose();
+  let ws: WebSocket;
+  let retryMs = 500;
+  const conn: Connection = {
+    send(msg) {
+      if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(msg));
+    },
+  };
+  const open = () => {
+    ws = new WebSocket(`${scheme}://${location.host}/ws`);
+    ws.onopen = () => {
+      retryMs = 500;
+      handlers.onOpen(conn);
+    };
+    ws.onmessage = (e) => handlers.onMessage(JSON.parse(e.data));
+    ws.onclose = () => {
+      handlers.onClose();
+      setTimeout(open, retryMs);
+      retryMs = Math.min(retryMs * 2, 4000);
+    };
+  };
+  open();
+  return conn;
 }

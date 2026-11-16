@@ -48,6 +48,15 @@ async function connect() {
   };
 }
 
+async function pairedRoom() {
+  const { host, code } = await hostWithRoom();
+  const phone = await connect();
+  phone.send({ type: "join-room", code });
+  await phone.next();
+  await host.next();
+  return { host, phone, code };
+}
+
 async function hostWithRoom() {
   const host = await connect();
   host.send({ type: "create-room" });
@@ -68,8 +77,8 @@ test("a phone joins with the room code and both sides learn they are connected",
   const { host, code } = await hostWithRoom();
   const phone = await connect();
   phone.send({ type: "join-room", code });
-  expect(await phone.next()).toEqual({ type: "room-joined", code });
-  expect(await host.next()).toEqual({ type: "peer-joined" });
+  expect(await phone.next()).toEqual({ type: "room-joined", code, slot: 0 });
+  expect(await host.next()).toEqual({ type: "peer-joined", slot: 0 });
 });
 
 test("a phone typing a code for a room that does not exist is told so and can try again", async () => {
@@ -79,15 +88,15 @@ test("a phone typing a code for a room that does not exist is told so and can tr
   phone.send({ type: "join-room", code: wrong });
   expect(await phone.next()).toEqual({ type: "error", reason: "room-not-found" });
   phone.send({ type: "join-room", code });
-  expect(await phone.next()).toEqual({ type: "room-joined", code });
-  expect(await host.next()).toEqual({ type: "peer-joined" });
+  expect(await phone.next()).toEqual({ type: "room-joined", code, slot: 0 });
+  expect(await host.next()).toEqual({ type: "peer-joined", slot: 0 });
 });
 
 test("the room code can be typed in lowercase with stray spaces", async () => {
   const { code } = await hostWithRoom();
   const phone = await connect();
   phone.send({ type: "join-room", code: ` ${code.toLowerCase()} ` });
-  expect(await phone.next()).toEqual({ type: "room-joined", code });
+  expect(await phone.next()).toEqual({ type: "room-joined", code, slot: 0 });
 });
 
 test("a second phone is told the room is full", async () => {
@@ -117,11 +126,11 @@ test("when the phone leaves, the computer is told and another phone can take its
   await phone.next();
   await host.next();
   phone.leave();
-  expect(await host.next()).toEqual({ type: "peer-left" });
+  expect(await host.next()).toEqual({ type: "peer-left", slot: 0 });
 
   const replacement = await connect();
   replacement.send({ type: "join-room", code });
-  expect(await replacement.next()).toEqual({ type: "room-joined", code });
+  expect(await replacement.next()).toEqual({ type: "room-joined", code, slot: 0 });
 });
 
 test("when the computer leaves, the phone is told and the room no longer exists", async () => {
@@ -130,9 +139,39 @@ test("when the computer leaves, the phone is told and the room no longer exists"
   phone.send({ type: "join-room", code });
   await phone.next();
   host.leave();
-  expect(await phone.next()).toEqual({ type: "peer-left" });
+  expect(await phone.next()).toEqual({ type: "peer-left", slot: 0 });
 
   const late = await connect();
   late.send({ type: "join-room", code });
   expect(await late.next()).toEqual({ type: "error", reason: "room-not-found" });
+});
+
+test("what the phone sends reaches the computer, and what the computer sends reaches the phone", async () => {
+  const { host, phone } = await pairedRoom();
+  phone.send({ type: "to-host", data: { k: "swing", power: 0.5 } });
+  expect(await host.next()).toEqual({
+    type: "from-controller",
+    slot: 0,
+    data: { k: "swing", power: 0.5 },
+  });
+  host.send({ type: "to-controller", data: { k: "hit" } });
+  expect(await phone.next()).toEqual({ type: "from-host", data: { k: "hit" } });
+});
+
+test("a phone that drops out gets its seat back when it rejoins with the same code", async () => {
+  const { host, phone, code } = await pairedRoom();
+  phone.leave();
+  expect(await host.next()).toEqual({ type: "peer-left", slot: 0 });
+  const again = await connect();
+  again.send({ type: "join-room", code, slot: 0 });
+  expect(await again.next()).toEqual({ type: "room-joined", code, slot: 0 });
+  expect(await host.next()).toEqual({ type: "peer-joined", slot: 0 });
+  again.send({ type: "to-host", data: 1 });
+  expect(await host.next()).toEqual({ type: "from-controller", slot: 0, data: 1 });
+});
+
+test("a device that is not in a room cannot relay anything", async () => {
+  const stray = await connect();
+  stray.send({ type: "to-host", data: 1 });
+  expect(await stray.next()).toEqual({ type: "error", reason: "bad-message" });
 });

@@ -1,5 +1,5 @@
-import { showController } from "./controller";
-import { showHost } from "./host";
+import { showController } from "./controller/controller";
+import { showHost } from "./host/host";
 
 /** Same URL on both devices: a touch-first device is the controller. */
 function role(): "host" | "controller" {
