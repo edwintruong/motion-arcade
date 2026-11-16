@@ -252,7 +252,12 @@ export function showHost(app: HTMLElement) {
       setWaiting(false);
       phones.length = 0;
       renderLobby();
-      say("Mất kết nối tới server. Đang nối lại…", "bad");
+      say(
+        navigator.onLine
+          ? "Mất kết nối tới server. Đang nối lại…"
+          : "Không có mạng. Cần mạng để ghép điện thoại; game sẽ tự nối lại khi có mạng.",
+        "bad",
+      );
     },
   });
   const toPhones = (data: HostMsg, slot?: number) =>

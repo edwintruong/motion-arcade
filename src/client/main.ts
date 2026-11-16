@@ -11,3 +11,7 @@ function role(): "host" | "controller" {
 const app = document.querySelector<HTMLElement>("#app")!;
 if (role() === "controller") showController(app);
 else showHost(app);
+
+// Installable app: only the built version registers the offline cache.
+if (import.meta.env.PROD && "serviceWorker" in navigator)
+  navigator.serviceWorker.register("/sw.js");
