@@ -25,6 +25,23 @@ cloudflared tunnel --url http://localhost:3000
 
 Lệnh in ra một địa chỉ `https://….trycloudflare.com`. Mở địa chỉ đó trên cả máy tính lẫn điện thoại.
 
+### Hoặc: mở cho mọi thiết bị cùng mạng wifi
+
+```bash
+LAN_IP=192.168.0.154 npm run dev:lan
+```
+
+Lệnh này chạy server bằng HTTPS với chứng chỉ tự ký và in ra địa chỉ `https://<IP>:3000`. Lần đầu mỗi thiết bị sẽ thấy cảnh báo chứng chỉ: chọn Nâng cao → Tiếp tục.
+
+`LAN_IP` là địa chỉ của máy tính trong mạng wifi (xem bằng `ipconfig` trên Windows). Chạy trực tiếp trên Linux/macOS thì bỏ được biến này.
+
+Nếu chạy trong WSL2, Windows phải chuyển tiếp cổng vào WSL. Mở PowerShell **bằng quyền Administrator** và chạy một lần (thay `<IP-WSL>` bằng kết quả của `hostname -I` trong WSL; địa chỉ này có thể đổi sau khi khởi động lại máy):
+
+```powershell
+netsh interface portproxy add v4tov4 listenport=3000 listenaddress=0.0.0.0 connectport=3000 connectaddress=<IP-WSL>
+New-NetFirewallRule -DisplayName "Motion Arcade dev" -Direction Inbound -Protocol TCP -LocalPort 3000 -Action Allow
+```
+
 Cách đưa lên web lâu dài: xem [docs/DEPLOY.md](docs/DEPLOY.md). Bản đã deploy cài được về máy tính như một ứng dụng (PWA) từ nút cài đặt của trình duyệt.
 
 ## Cách chơi
@@ -43,6 +60,7 @@ Cách đưa lên web lâu dài: xem [docs/DEPLOY.md](docs/DEPLOY.md). Bản đã
 | Lệnh | Tác dụng |
 |---|---|
 | `npm run dev` | Server dev, một cổng cho cả trang web và WebSocket |
+| `npm run dev:lan` | Server dev qua HTTPS tự ký, cho các thiết bị cùng mạng |
 | `npm test` | Test logic: server phòng, nhận diện cú vung, luật, đối thủ máy, đồng bộ online |
 | `npm run e2e` | Test trên trình duyệt thật với cảm biến giả lập (cần `npx playwright install --with-deps chromium` một lần) |
 | `npm run typecheck` | Kiểm tra kiểu |

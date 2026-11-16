@@ -8,7 +8,8 @@
     "start": "NODE_ENV=production tsx src/server/main.ts",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "e2e": "vitest run --config vitest.e2e.config.ts"
+    "e2e": "vitest run --config vitest.e2e.config.ts",
+    "dev:lan": "LAN=1 tsx src/server/main.ts"
   },
   "dependencies": {
     "sirv": "^3.0.2",
