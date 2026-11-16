@@ -45,6 +45,14 @@ export function showHost(app: HTMLElement) {
           <button data-mode="ai" data-level="hard">Khó</button>
         </div>
         <button data-mode="local2">Hai người chung màn hình</button>
+        <div class="group online">
+          <span>Đấu online với bạn ở nơi khác</span>
+          <button data-mode="online-create">Tạo trận</button>
+          <input class="match-code" maxlength="4" autocomplete="off" spellcheck="false"
+            placeholder="Mã của bạn bè" aria-label="Mã phòng của bạn bè" />
+          <button data-mode="online-join">Vào trận</button>
+        </div>
+        <p class="online-status"></p>
         <p class="hint"></p>
       </nav>
       <a href="?role=controller">Thiết bị này là điện thoại?</a>
@@ -75,6 +83,16 @@ export function showHost(app: HTMLElement) {
   const phones: Phone[] = [];
   let session: PickleballSession | undefined;
   let mode: PlayMode | undefined;
+  /** Online: this computer has opened its room to a challenger. */
+  let waiting = false;
+  const onlineStatus = (text: string) => ($(".online-status").textContent = text);
+  const setWaiting = (next: boolean) => {
+    waiting = next;
+    $("[data-mode=online-create]").textContent = waiting ? "Huỷ chờ" : "Tạo trận";
+    onlineStatus(
+      waiting ? `Đang chờ đối thủ. Gửi mã phòng ${code.textContent} cho bạn bè để họ bấm Vào trận.` : "",
+    );
+  };
   const connectedSlots = () =>
     phones.flatMap((p, slot) => (p?.connected ? [slot] : []));
 
@@ -111,6 +129,7 @@ export function showHost(app: HTMLElement) {
   // ---- starting and leaving a game ----------------------------------------
 
   function start(next: PlayMode) {
+    setWaiting(false);
     mode = next;
     stage.hideLobby();
     $(".lobby").hidden = true;
@@ -123,6 +142,7 @@ export function showHost(app: HTMLElement) {
   }
 
   function toMenu() {
+    if (mode?.kind === "online") conn.send({ type: "leave-match" });
     session?.dispose();
     session = undefined;
     mode = undefined;
@@ -152,6 +172,11 @@ export function showHost(app: HTMLElement) {
     if (target.dataset.act === "menu") toMenu();
     else if (target.dataset.mode === "practice") start({ kind: "practice" });
     else if (target.dataset.mode === "local2") start({ kind: "local2" });
+    else if (target.dataset.mode === "online-create") setWaiting(!waiting);
+    else if (target.dataset.mode === "online-join") {
+      onlineStatus("Đang vào trận…");
+      conn.send({ type: "join-match", code: $<HTMLInputElement>(".match-code").value });
+    }
     else if (target.dataset.mode === "ai")
       start({ kind: "ai", level: target.dataset.level as AiLevel });
   });
@@ -183,6 +208,9 @@ export function showHost(app: HTMLElement) {
     }
   }
 
+  const startOnline = (side: 0 | 1) =>
+    start({ kind: "online", side, send: (data) => conn.send({ type: "to-opponent", data }) });
+
   const conn = connect({
     onOpen: (c) => c.send({ type: "create-room" }),
     onMessage(msg) {
@@ -197,6 +225,22 @@ export function showHost(app: HTMLElement) {
       } else if (msg.type === "peer-left") {
         if (phones[msg.slot]) phones[msg.slot].connected = false;
         renderLobby();
+      } else if (msg.type === "opponent-joined") {
+        // Whoever opened the match plays the near side; a challenge nobody asked for is declined.
+        if (waiting && !session) startOnline(0);
+        else conn.send({ type: "leave-match" });
+      } else if (msg.type === "match-joined") {
+        if (!session) startOnline(1);
+      } else if (msg.type === "opponent-left") {
+        if (mode?.kind === "online") {
+          toMenu();
+          onlineStatus("Đối thủ đã rời trận hoặc chưa sẵn sàng.");
+        }
+      } else if (msg.type === "from-opponent") {
+        if (mode?.kind === "online") session?.onRemote(msg.data);
+      } else if (msg.type === "error") {
+        if (msg.reason === "match-not-found") onlineStatus("Không tìm thấy trận với mã này.");
+        else if (msg.reason === "match-full") onlineStatus("Trận này đã đủ hai người.");
       } else if (msg.type === "from-controller") {
         const data = parseControllerMsg(msg.data);
         if (data) onController(msg.slot, data);
@@ -204,6 +248,8 @@ export function showHost(app: HTMLElement) {
     },
     onClose() {
       code.textContent = "····";
+      if (mode?.kind === "online") toMenu();
+      setWaiting(false);
       phones.length = 0;
       renderLobby();
       say("Mất kết nối tới server. Đang nối lại…", "bad");

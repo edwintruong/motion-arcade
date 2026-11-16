@@ -1,6 +1,7 @@
 import { AiPlayer, AI_LEVELS, type AiLevel } from "../../games/pickleball/ai";
 import { COURT, other, type Side } from "../../games/pickleball/court";
 import { Match, type MatchEvent, type Reason, type Swing } from "../../games/pickleball/match";
+import { applyWire, toWire, type Wire } from "../../games/pickleball/netplay";
 import type { Quat } from "../../shared/quat";
 import { sounds } from "./audio";
 import type { Stage } from "./stage";
@@ -8,7 +9,9 @@ import type { Stage } from "./stage";
 export type PlayMode =
   | { kind: "practice" }
   | { kind: "ai"; level: AiLevel }
-  | { kind: "local2" };
+  | { kind: "local2" }
+  /** Against another computer; `side` is the one played here. */
+  | { kind: "online"; side: Side; send: (wire: Wire) => void };
 
 /** How the session reaches the phones. */
 export interface PhoneLink {
@@ -47,10 +50,13 @@ export class PickleballSession {
       stage.buildCourt(COURT);
       courtBuilt = true;
     }
-    stage.showCourt(mode.kind === "local2" ? "side" : "behind-0");
+    stage.showCourt(
+      mode.kind === "local2" ? "side" : mode.kind === "online" && mode.side === 1 ? "behind-1" : "behind-0",
+    );
     this.match = new Match({
       mode: mode.kind === "practice" ? "practice" : "match",
       speeds: [5, mode.kind === "ai" ? AI_LEVELS[mode.level].speed : 5],
+      owns: mode.kind === "online" ? (side) => side === mode.side : undefined,
     });
     if (mode.kind === "ai") this.ai = new AiPlayer(1, mode.level);
 
@@ -69,6 +75,7 @@ export class PickleballSession {
   // ---- input --------------------------------------------------------------
 
   private sideOf(slot: number): Side {
+    if (this.mode.kind === "online") return this.mode.side;
     return this.mode.kind === "local2" ? (slot as Side) : 0;
   }
 
@@ -77,8 +84,20 @@ export class PickleballSession {
     return this.mode.kind === "local2" ? side : undefined;
   }
 
+  /** Whether `side` is played by someone holding a phone at this computer. */
   private isHuman(side: Side) {
+    if (this.mode.kind === "online") return side === this.mode.side;
     return this.mode.kind === "local2" || side === 0;
+  }
+
+  /** Online: a message from the other computer. */
+  onRemote(data: unknown) {
+    const before = [...this.match.state.ball.p] as [number, number, number];
+    if (!applyWire(this.match, data)) return;
+    const after = this.match.state.ball.p;
+    // The opponent's hit moves the ball to where they really struck it.
+    if (Math.hypot(after[0] - before[0], after[1] - before[1], after[2] - before[2]) > 0.05)
+      this.stage.smoothBallFrom(before, after);
   }
 
   onSwing(slot: number, swing: Swing) {
@@ -95,13 +114,13 @@ export class PickleballSession {
   }
 
   setPaused(paused: boolean) {
-    this.paused = paused;
+    // An online match cannot stop for one side; the other player is still playing.
+    this.paused = paused && this.mode.kind !== "online";
   }
 
   private restart() {
     this.match.restart();
-    this.el.querySelector<HTMLElement>(".result")!.hidden = true;
-    this.drawScore();
+    if (this.mode.kind === "online") this.mode.send({ k: "rematch" });
   }
 
   // ---- every frame --------------------------------------------------------
@@ -111,8 +130,15 @@ export class PickleballSession {
     if (!this.paused) {
       if (s.phase === "match-over") this.overFor += dt;
       this.ai?.update(this.match, dt);
-      for (const event of this.match.step(dt)) this.on(event);
+      for (const event of this.match.step(dt)) {
+        if (this.mode.kind === "online") {
+          const wire = toWire(event);
+          if (wire) this.mode.send(wire);
+        }
+        this.on(event);
+      }
     }
+    this.el.querySelector<HTMLElement>(".result")!.hidden = s.phase !== "match-over";
     this.stage.drawCourt(
       { ball: s.ball.p, players: s.players, paddles: this.paddles, solo: this.mode.kind === "practice" },
       dt,
@@ -121,12 +147,14 @@ export class PickleballSession {
 
   private name(side: Side) {
     if (this.mode.kind === "local2") return `Người chơi ${side + 1}`;
+    if (this.mode.kind === "online") return side === this.mode.side ? "Bạn" : "Đối thủ";
     return side === 0 ? "Bạn" : "Máy";
   }
 
   private on(e: MatchEvent) {
     switch (e.type) {
       case "serve-ready":
+        this.drawScore();
         if (this.mode.kind === "practice") return;
         this.banner(
           this.isHuman(e.server)
@@ -164,7 +192,7 @@ export class PickleballSession {
         } else {
           this.banner(`${this.name(loser)} ${REASONS[e.reason]}`);
         }
-        (e.winner === 0 || this.mode.kind === "local2" ? sounds.point : sounds.fault)();
+        (this.isHuman(e.winner) ? sounds.point : sounds.fault)();
         if (this.isHuman(loser)) this.phones.buzz(this.slotOf(loser), 120);
         this.drawScore();
         return;
@@ -172,10 +200,8 @@ export class PickleballSession {
       case "match-over": {
         this.overFor = 0;
         sounds.win();
-        const result = this.el.querySelector<HTMLElement>(".result")!;
-        result.hidden = false;
-        result.querySelector("h2")!.textContent =
-          this.mode.kind === "ai" && e.winner === 1 ? "Máy thắng" : `${this.name(e.winner)} thắng!`;
+        this.el.querySelector(".result h2")!.textContent =
+          this.isHuman(e.winner) ? `${this.name(e.winner)} thắng!` : `${this.name(e.winner)} thắng`;
         this.banner("");
         this.phones.say(undefined, "Hết trận. Vung để chơi lại");
         return;

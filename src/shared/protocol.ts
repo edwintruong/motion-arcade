@@ -16,9 +16,18 @@ export type ClientMessage =
   | { type: "join-room"; code: string; slot?: number }
   | { type: "to-host"; data: unknown }
   /** Without `slot`, goes to every phone in the room. */
-  | { type: "to-controller"; slot?: number; data: unknown };
+  | { type: "to-controller"; slot?: number; data: unknown }
+  /** A computer asks to play against the computer whose room has this code. */
+  | { type: "join-match"; code: string }
+  | { type: "leave-match" }
+  | { type: "to-opponent"; data: unknown };
 
-export type ErrorReason = "room-not-found" | "room-full" | "bad-message";
+export type ErrorReason =
+  | "room-not-found"
+  | "room-full"
+  | "bad-message"
+  | "match-not-found"
+  | "match-full";
 
 export type ServerMessage =
   | { type: "room-created"; code: string }
@@ -27,4 +36,10 @@ export type ServerMessage =
   | { type: "peer-left"; slot: number }
   | { type: "from-controller"; slot: number; data: unknown }
   | { type: "from-host"; data: unknown }
+  /** To the computer that asked: it is now playing the room with this code. */
+  | { type: "match-joined"; code: string }
+  /** To the computer whose code was used: someone has come to play. */
+  | { type: "opponent-joined" }
+  | { type: "opponent-left" }
+  | { type: "from-opponent"; data: unknown }
   | { type: "error"; reason: ErrorReason };

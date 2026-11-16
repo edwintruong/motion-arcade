@@ -214,3 +214,68 @@ test("a device that is not in a room cannot relay anything", async () => {
   stray.send({ type: "to-host", data: 1 });
   expect(await stray.next()).toEqual({ type: "error", reason: "bad-message" });
 });
+
+// ---- online: two computers, each with its own room, play each other --------
+
+async function linkedHosts() {
+  const a = await hostWithRoom();
+  const b = await hostWithRoom();
+  b.host.send({ type: "join-match", code: a.code });
+  expect(await b.host.next()).toEqual({ type: "match-joined", code: a.code });
+  expect(await a.host.next()).toEqual({ type: "opponent-joined" });
+  return { a, b };
+}
+
+test("a computer joins another computer's match with its room code, and they can talk", async () => {
+  const { a, b } = await linkedHosts();
+  a.host.send({ type: "to-opponent", data: { k: "hit" } });
+  expect(await b.host.next()).toEqual({ type: "from-opponent", data: { k: "hit" } });
+  b.host.send({ type: "to-opponent", data: 2 });
+  expect(await a.host.next()).toEqual({ type: "from-opponent", data: 2 });
+});
+
+test("each computer keeps its own phone while playing online", async () => {
+  const { a, b } = await linkedHosts();
+  const phone = await connect();
+  phone.send({ type: "join-room", code: b.code });
+  expect(await phone.next()).toEqual({ type: "room-joined", code: b.code, slot: 0 });
+  expect(await b.host.next()).toEqual({ type: "peer-joined", slot: 0 });
+  phone.send({ type: "to-host", data: "swing" });
+  expect(await b.host.next()).toEqual({ type: "from-controller", slot: 0, data: "swing" });
+  a.host.send({ type: "to-opponent", data: "still linked" });
+  expect(await b.host.next()).toEqual({ type: "from-opponent", data: "still linked" });
+});
+
+test("a match code that does not exist, or is one's own, is refused", async () => {
+  const { host, code } = await hostWithRoom();
+  host.send({ type: "join-match", code: code === "ZZZZ" ? "YYYY" : "ZZZZ" });
+  expect(await host.next()).toEqual({ type: "error", reason: "match-not-found" });
+  host.send({ type: "join-match", code });
+  expect(await host.next()).toEqual({ type: "error", reason: "match-not-found" });
+});
+
+test("a match already has its two computers: a third is refused", async () => {
+  const { a } = await linkedHosts();
+  const c = await hostWithRoom();
+  c.host.send({ type: "join-match", code: a.code });
+  expect(await c.host.next()).toEqual({ type: "error", reason: "match-full" });
+});
+
+test("when one computer leaves the match or disconnects, the other is told", async () => {
+  const first = await linkedHosts();
+  first.b.host.send({ type: "leave-match" });
+  expect(await first.a.host.next()).toEqual({ type: "opponent-left" });
+  // Having left, it is free to be joined again.
+  first.b.host.send({ type: "join-match", code: first.a.code });
+  expect(await first.b.host.next()).toEqual({ type: "match-joined", code: first.a.code });
+  expect(await first.a.host.next()).toEqual({ type: "opponent-joined" });
+
+  first.a.host.leave();
+  expect(await first.b.host.next()).toEqual({ type: "opponent-left" });
+});
+
+test("talking to an opponent that is not there is an error", async () => {
+  const { host } = await hostWithRoom();
+  host.send({ type: "to-opponent", data: 1 });
+  expect(await host.next()).toEqual({ type: "error", reason: "bad-message" });
+});

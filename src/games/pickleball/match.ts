@@ -15,7 +15,16 @@ export type Phase = "serve" | "rally" | "point-over" | "match-over";
 
 export type MatchEvent =
   | { type: "serve-ready"; server: Side }
-  | { type: "hit"; side: Side; kind: SwingKind; power: number; ball: Ball; shot: number }
+  | {
+      type: "hit";
+      side: Side;
+      kind: SwingKind;
+      power: number;
+      ball: Ball;
+      shot: number;
+      /** Online: reported by the other computer rather than played here. */
+      remote?: true;
+    }
   | { type: "whiff"; side: Side }
   | { type: "bounce"; p: Vec3 }
   | { type: "net" }
@@ -27,6 +36,10 @@ export type MatchEvent =
       score: [number, number];
       /** Who serves next. */
       server: Side;
+      /** The match winner, if this rally decided it. */
+      champion: Side | null;
+      /** Online: ruled by the other computer rather than here. */
+      remote?: true;
     }
   | { type: "match-over"; winner: Side };
 
@@ -199,13 +212,18 @@ export class Match {
     s.shots = hit.shot;
     s.players[hit.side].swingAge = 0;
     s.players[hit.side].kind = hit.kind;
-    this.events.push({ type: "hit", ...hit });
+    this.events.push({ type: "hit", ...hit, remote: true });
+  }
+
+  /** Online: whether this computer plays `side`. */
+  owns(side: Side) {
+    return this.opts.owns(side);
   }
 
   /** Online: the opponent's computer reports how the rally ended. */
   applyRemoteRallyOver(winner: Side, reason: Reason, score: Score) {
     if (this.state.phase === "match-over") return;
-    this.finishRally(winner, reason, score);
+    this.finishRally(winner, reason, score, true);
   }
 
   /** Advances the simulation; returns everything that happened. */
@@ -363,7 +381,7 @@ export class Match {
     this.finishRally(winner, reason, score);
   }
 
-  private finishRally(winner: Side, reason: Reason, score: Score) {
+  private finishRally(winner: Side, reason: Reason, score: Score, remote = false) {
     const s = this.state;
     s.score = score;
     s.phase = "point-over";
@@ -375,6 +393,8 @@ export class Match {
       reason,
       score: [...score.points],
       server: score.server,
+      champion: score.winner,
+      ...(remote ? { remote: true as const } : {}),
     });
   }
 

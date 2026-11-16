@@ -14,6 +14,8 @@ interface Room {
   code: string;
   host: WebSocket;
   controllers: (WebSocket | undefined)[];
+  /** The other computer in an online match, if any. */
+  opponent?: Room;
 }
 
 type Seat = { room: Room; slot: number | "host" };
@@ -42,6 +44,14 @@ function parse(raw: string): ClientMessage | null {
       case "to-controller":
         if ("data" in m && slotOk)
           return { type: "to-controller", slot, data: m.data };
+        break;
+      case "join-match":
+        if (typeof m.code === "string") return { type: "join-match", code: m.code };
+        break;
+      case "leave-match":
+        return { type: "leave-match" };
+      case "to-opponent":
+        if ("data" in m) return { type: "to-opponent", data: m.data };
         break;
     }
   } catch {}
@@ -77,6 +87,7 @@ export function attachRooms(http: Server, path = "/ws", heartbeatMs = 15_000) {
     seats.delete(ws);
     const { room, slot } = seat;
     if (slot === "host") {
+      unlink(room);
       rooms.delete(room.code);
       room.controllers.forEach((c, i) => {
         if (!c) return;
@@ -87,6 +98,13 @@ export function attachRooms(http: Server, path = "/ws", heartbeatMs = 15_000) {
       room.controllers[slot] = undefined;
       send(room.host, { type: "peer-left", slot });
     }
+  }
+
+  function unlink(room: Room) {
+    const opponent = room.opponent;
+    if (!opponent) return;
+    room.opponent = opponent.opponent = undefined;
+    send(opponent.host, { type: "opponent-left" });
   }
 
   function join(ws: WebSocket, rawCode: string, wanted?: number) {
@@ -133,6 +151,25 @@ export function attachRooms(http: Server, path = "/ws", heartbeatMs = 15_000) {
         for (const c of targets) send(c, { type: "from-host", data: msg.data });
         return;
       }
+      case "join-match": {
+        if (seat?.slot !== "host") break;
+        const mine = seat.room;
+        const theirs = rooms.get(msg.code.trim().toUpperCase());
+        if (!theirs || theirs === mine)
+          return send(ws, { type: "error", reason: "match-not-found" });
+        if (theirs.opponent) return send(ws, { type: "error", reason: "match-full" });
+        unlink(mine);
+        mine.opponent = theirs;
+        theirs.opponent = mine;
+        send(ws, { type: "match-joined", code: theirs.code });
+        return send(theirs.host, { type: "opponent-joined" });
+      }
+      case "leave-match":
+        if (seat?.slot !== "host") break;
+        return unlink(seat.room);
+      case "to-opponent":
+        if (seat?.slot !== "host" || !seat.room.opponent) break;
+        return send(seat.room.opponent.host, { type: "from-opponent", data: msg.data });
     }
     send(ws, { type: "error", reason: "bad-message" });
   }

@@ -4,7 +4,7 @@ import type { SwingKind } from "../../shared/gestures/swing";
 import { connect, type Connection } from "../connection";
 import { Sensors } from "./sensors";
 
-const ERRORS: Record<ErrorReason, string> = {
+const ERRORS: Partial<Record<ErrorReason, string>> = {
   "room-not-found": "Không tìm thấy phòng. Kiểm tra lại mã trên máy tính.",
   "room-full": "Phòng này đã đủ điện thoại.",
   "bad-message": "Có lỗi xảy ra. Thử lại nhé.",
@@ -183,7 +183,7 @@ export function showController(app: HTMLElement) {
           sessionStorage.removeItem("seat");
           show("join");
         }
-        say(ERRORS[msg.reason], "bad");
+        say(ERRORS[msg.reason] ?? "Có lỗi xảy ra. Thử lại nhé.", "bad");
         input.select();
       } else if (msg.type === "from-host") {
         const data = msg.data as HostMsg;
