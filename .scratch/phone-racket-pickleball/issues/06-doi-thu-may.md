@@ -4,10 +4,10 @@
 
 **Blocked by:** 05 Đánh bóng tập
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] Đối thủ máy di chuyển tới bóng và đánh trả sang sân người chơi
-- [ ] Nhân vật người chơi tự di chuyển tới vị trí đón bóng
-- [ ] Đánh qua lại được liên tục cho tới khi một bên đánh hỏng
-- [ ] Đối thủ có tỉ lệ đánh hỏng, tăng lên khi bóng nhanh hoặc xa; có ít nhất hai mức độ khó
-- [ ] Hành vi của đối thủ có test tự động
+- [x] Đối thủ máy di chuyển tới bóng và đánh trả sang sân người chơi
+- [x] Nhân vật người chơi tự di chuyển tới vị trí đón bóng
+- [x] Đánh qua lại được liên tục cho tới khi một bên đánh hỏng
+- [x] Đối thủ có tỉ lệ đánh hỏng, tăng lên khi bóng nhanh hoặc xa; có ít nhất hai mức độ khó
+- [x] Hành vi của đối thủ có test tự động

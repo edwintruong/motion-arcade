@@ -38,7 +38,7 @@ export function applyWire(match: Match, data: unknown): boolean {
     match.applyRemoteHit({
       side: m.side as Side,
       kind: m.kind as SwingKind,
-      power: m.power as number,
+      power: Math.min(1, Math.max(0, m.power as number)),
       ball: { p: m.p as Vec3, v: m.v as Vec3 },
       shot: m.shot as number,
     });

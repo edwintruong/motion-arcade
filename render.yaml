@@ -1,0 +1,9 @@
+# Render blueprint: one web service built from the Dockerfile.
+# Render provides HTTPS and WebSocket support, and redeploys on every push.
+services:
+  - type: web
+    name: motion-arcade
+    runtime: docker
+    plan: free
+    healthCheckPath: /healthz
+    autoDeploy: true

@@ -4,11 +4,11 @@
 
 **Blocked by:** 07 Luật và tính điểm
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] Menu cho chọn đấu với máy hoặc hai người
-- [ ] Hai điện thoại vào cùng một phòng, mỗi máy được gán một bên sân và hiện rõ mình là bên nào
-- [ ] Cú vung của mỗi điện thoại chỉ điều khiển nhân vật của người đó
-- [ ] Trận hai người dùng đầy đủ luật và tính điểm như đấu với máy
-- [ ] Điện thoại thứ ba gõ mã phòng thì được báo phòng đã đầy
-- [ ] Một người mất kết nối thì trận tạm dừng cho tới khi người đó quay lại
+- [x] Menu cho chọn đấu với máy hoặc hai người
+- [x] Hai điện thoại vào cùng một phòng, mỗi máy được gán một bên sân và hiện rõ mình là bên nào
+- [x] Cú vung của mỗi điện thoại chỉ điều khiển nhân vật của người đó
+- [x] Trận hai người dùng đầy đủ luật và tính điểm như đấu với máy
+- [x] Điện thoại thứ ba gõ mã phòng thì được báo phòng đã đầy
+- [x] Một người mất kết nối thì trận tạm dừng cho tới khi người đó quay lại

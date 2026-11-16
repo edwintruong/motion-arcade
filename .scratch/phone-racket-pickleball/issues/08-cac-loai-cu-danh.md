@@ -4,10 +4,12 @@
 
 **Blocked by:** 05 Đánh bóng tập
 
-**Status:** ready-for-agent
+**Status:** needs-device-test
 
-- [ ] Phân biệt được thuận tay và trái tay theo chiều vung
-- [ ] Vung hất lên tạo cú lốp bay cao và chậm; vung chém xuống tạo cú đập nhanh và thấp
-- [ ] Nhân vật diễn động tác khớp với loại cú đánh
-- [ ] Người thuận tay trái chọn được tay cầm vợt
-- [ ] Bộ phân loại cú đánh có test tự động với dữ liệu cảm biến ghi lại cho từng loại
+- [x] Phân biệt được thuận tay và trái tay theo chiều vung
+- [x] Vung hất lên tạo cú lốp bay cao và chậm; vung chém xuống tạo cú đập nhanh và thấp
+- [x] Nhân vật diễn động tác khớp với loại cú đánh
+- [x] Người thuận tay trái chọn được tay cầm vợt
+- [x] Bộ phân loại cú đánh có test tự động với dữ liệu cảm biến ghi lại cho từng loại
+
+**Ghi chú:** Phân loại cú đánh đã test bằng dữ liệu tổng hợp; chọn tay trái/phải nằm trên trang điện thoại. Đã kiểm chứng bằng test tự động trên Chromium với cảm biến giả lập. Chưa thử trên iPhone và điện thoại Android thật; ngưỡng nhận diện cú vung cần tinh chỉnh bằng dữ liệu ghi từ máy thật.

@@ -281,3 +281,8 @@ test("a finished match can be played again from 0-0", () => {
   expect(m.state.score.points).toEqual([0, 0]);
   until(m, "hit", serveThenWait, 5);
 });
+
+test("options left undefined fall back to their defaults", () => {
+  const m = new Match({ mode: "match", owns: undefined, speeds: undefined, rng: undefined });
+  until(m, "hit", serveThenWait, 5);
+});

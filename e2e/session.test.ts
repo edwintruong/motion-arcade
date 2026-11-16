@@ -1,7 +1,8 @@
-import { afterAll, expect, test } from "vitest";
+import { afterAll, afterEach, expect, test } from "vitest";
 import { BASE } from "./server";
-import { closeBrowser, openHost, openPhone, shot, swing } from "./helpers";
+import { closeBrowser, closePages, newContext, openHost, openPhone, shot, swing } from "./helpers";
 
+afterEach(closePages);
 afterAll(closeBrowser);
 
 test("the phone explains how to hold and swing it before play", async () => {
@@ -30,7 +31,7 @@ test("losing the phone pauses the game; it rejoins its room by itself and play r
 
 test("the phone asks to keep its screen awake while playing", async () => {
   const host = await openHost();
-  const context = await host.page.context().browser()!.newContext({ hasTouch: true, isMobile: true });
+  const context = await newContext({ hasTouch: true, isMobile: true });
   const page = await context.newPage();
   await page.addInitScript(() => {
     (window as any).wakeLockRequests = 0;
@@ -61,8 +62,8 @@ test("two players, one screen: each phone plays its own side of a scored match",
   await host.page.waitForTimeout(300);
   expect(await host.page.textContent(".banner")).toContain("Người chơi 1 giao bóng");
   // ...player 1 serves, player 2 never returns it: player 1 scores.
-  await host.page.waitForTimeout(700);
-  await swing(one.page);
+  for (let i = 0; i < 10 && (await host.page.textContent(".banner"))!.includes("giao bóng"); i++)
+    await swing(one.page);
   await host.page.waitForSelector("text=Người chơi 2 không đỡ được bóng");
   expect(await host.page.textContent("[data-points='0']")).toBe("1");
   await shot(host.page, "10-two-players");
@@ -72,7 +73,7 @@ test("a third phone is turned away, and a missing player pauses a two-player mat
   const host = await openHost();
   await openPhone(host.code);
   const two = await openPhone(host.code);
-  const context = await host.page.context().browser()!.newContext();
+  const context = await newContext();
   const third = await context.newPage();
   await third.goto(`${BASE}/?role=controller`);
   await third.fill("input", host.code);

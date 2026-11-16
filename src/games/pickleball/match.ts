@@ -112,11 +112,11 @@ export class Match {
 
   constructor(options: MatchOptions) {
     this.opts = {
-      pointsToWin: 11,
-      rng: Math.random,
-      speeds: [5, 5],
-      owns: () => true,
-      ...options,
+      mode: options.mode,
+      pointsToWin: options.pointsToWin ?? 11,
+      rng: options.rng ?? Math.random,
+      speeds: options.speeds ?? [5, 5],
+      owns: options.owns ?? (() => true),
     };
     const player = (side: Side): PlayerState => ({
       x: 0,

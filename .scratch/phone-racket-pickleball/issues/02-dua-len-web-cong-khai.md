@@ -4,10 +4,12 @@
 
 **Blocked by:** 01 Ghép cặp bằng mã phòng
 
-**Status:** ready-for-agent
+**Status:** needs-human
 
 - [ ] Toàn bộ game deploy thành một dịch vụ duy nhất trên một nền tảng có HTTPS và hỗ trợ WebSocket
 - [ ] Ghép cặp bằng mã phòng hoạt động trên địa chỉ công khai, giữa máy tính và điện thoại dùng mạng khác nhau (wifi và 4G)
 - [ ] Một lệnh hoặc một lần đẩy code là deploy được bản mới
-- [ ] Có tài liệu ngắn về cách deploy và các bước chỉ con người làm được (tạo tài khoản, đăng nhập)
-- [ ] Phòng không còn ai thì được dọn sau một khoảng thời gian, server không phình bộ nhớ
+- [x] Có tài liệu ngắn về cách deploy và các bước chỉ con người làm được (tạo tài khoản, đăng nhập)
+- [x] Phòng không còn ai thì được dọn sau một khoảng thời gian, server không phình bộ nhớ
+
+**Ghi chú:** Đã có Dockerfile, render.yaml và docs/DEPLOY.md; các bước build của container đã được chạy thử ngoài Docker. Còn lại là việc của con người: đẩy repo lên GitHub, tạo tài khoản hosting, bấm deploy, rồi thử trên wifi và 4G.

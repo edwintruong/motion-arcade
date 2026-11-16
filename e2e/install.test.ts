@@ -1,7 +1,8 @@
-import { afterAll, expect, test } from "vitest";
-import { closeBrowser, launch } from "./helpers";
+import { afterAll, afterEach, expect, test } from "vitest";
+import { closeBrowser, closePages, newContext } from "./helpers";
 import { PROD_BASE } from "./server";
 
+afterEach(closePages);
 afterAll(closeBrowser);
 
 test("the built app declares itself installable: name, standalone window, icons", async () => {
@@ -18,7 +19,7 @@ test("the built app declares itself installable: name, standalone window, icons"
 });
 
 test("once opened, the app loads without a network and says pairing needs one", async () => {
-  const context = await (await launch()).newContext();
+  const context = await newContext();
   const page = await context.newPage();
   await page.goto(`${PROD_BASE}/?role=host`);
   await page.evaluate(() => navigator.serviceWorker.ready.then(() => true));
@@ -37,7 +38,7 @@ test("the installed app picks up a new version the next time it is opened", asyn
   // so nothing is pinned to an old build.
   const worker = await (await fetch(`${PROD_BASE}/sw.js`)).text();
   expect(worker).toContain("skipWaiting");
-  const context = await (await launch()).newContext();
+  const context = await newContext();
   const page = await context.newPage();
   await page.goto(`${PROD_BASE}/?role=host`);
   await page.evaluate(() => navigator.serviceWorker.ready.then(() => true));

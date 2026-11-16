@@ -1,4 +1,4 @@
-import { chromium, type Browser, type Page } from "playwright";
+import { chromium, type Browser, type BrowserContext, type Page } from "playwright";
 import { BASE } from "./server";
 
 let browser: Browser | undefined;
@@ -10,6 +10,20 @@ export async function launch() {
   return browser;
 }
 
+const contexts: BrowserContext[] = [];
+
+/** A fresh browser profile, closed again by `closePages`. */
+export async function newContext(options: Parameters<Browser["newContext"]>[0] = {}) {
+  const context = await (await launch()).newContext(options);
+  contexts.push(context);
+  return context;
+}
+
+/** Every open page runs a 3D render loop; leaving them open starves later tests. */
+export async function closePages() {
+  await Promise.all(contexts.splice(0).map((c) => c.close()));
+}
+
 export async function closeBrowser() {
   await browser?.close();
   browser = undefined;
@@ -17,7 +31,7 @@ export async function closeBrowser() {
 
 /** A computer showing the game. Resolves once it has a room code. */
 export async function openHost(query = "") {
-  const context = await (await launch()).newContext({ viewport: { width: 1280, height: 720 } });
+  const context = await newContext({ viewport: { width: 1280, height: 720 } });
   const page = await context.newPage();
   const errors: string[] = [];
   page.on("pageerror", (e) => errors.push(String(e)));
@@ -29,7 +43,7 @@ export async function openHost(query = "") {
 
 /** A phone: joins the room and turns on its (simulated) motion sensors. */
 export async function openPhone(code: string, options: { sensors?: boolean } = {}) {
-  const context = await (await launch()).newContext({
+  const context = await newContext({
     viewport: { width: 390, height: 780 },
     hasTouch: true,
     isMobile: true,

@@ -1,0 +1,11 @@
+# One container serves the web pages and the room WebSocket.
+FROM node:24-slim
+WORKDIR /app
+COPY package.json package-lock.json ./
+RUN npm ci --omit=dev
+COPY . .
+RUN npm run build
+ENV NODE_ENV=production
+ENV PORT=3000
+EXPOSE 3000
+CMD ["npx", "tsx", "src/server/main.ts"]

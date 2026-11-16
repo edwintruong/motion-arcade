@@ -5,7 +5,11 @@ const port = Number(process.env.PORT ?? 3000);
 const production = process.env.NODE_ENV === "production";
 
 /** One process serves both the web pages and the room WebSocket. */
-const http = createServer((req, res) => pages(req, res));
+const http = createServer((req, res) => {
+  // For the hosting platform's health checks.
+  if (req.url === "/healthz") return void res.writeHead(200).end("ok");
+  pages(req, res);
+});
 attachRooms(http);
 
 let pages: RequestListener;

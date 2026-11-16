@@ -186,11 +186,12 @@ export function showController(app: HTMLElement) {
         say(ERRORS[msg.reason] ?? "Có lỗi xảy ra. Thử lại nhé.", "bad");
         input.select();
       } else if (msg.type === "from-host") {
-        const data = msg.data as HostMsg;
+        const data = msg.data as HostMsg | null;
+        if (typeof data !== "object" || data === null) return;
         if (data.k === "ping") toHost({ k: "pong", t: data.t });
-        else if (data.k === "buzz") navigator.vibrate?.(data.ms);
+        else if (data.k === "buzz") navigator.vibrate?.(Math.min(500, Number(data.ms) || 0));
         else if (data.k === "say")
-          for (const el of app.querySelectorAll(".say")) el.textContent = data.text;
+          for (const el of app.querySelectorAll(".say")) el.textContent = String(data.text).slice(0, 200);
       }
     },
     onClose() {

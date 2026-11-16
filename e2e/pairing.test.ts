@@ -1,6 +1,7 @@
-import { afterAll, expect, test } from "vitest";
-import { closeBrowser, openHost, openPhone, point, shot, swing } from "./helpers";
+import { afterAll, afterEach, expect, test } from "vitest";
+import { closeBrowser, closePages, newContext, openHost, openPhone, point, shot, swing } from "./helpers";
 
+afterEach(closePages);
 afterAll(closeBrowser);
 
 test("a phone pairs with the room code and the computer shows it connected", async () => {
@@ -14,7 +15,7 @@ test("a phone pairs with the room code and the computer shows it connected", asy
 
 test("a wrong room code shows an error and lets the player try again", async () => {
   const host = await openHost();
-  const context = await host.page.context().browser()!.newContext();
+  const context = await newContext();
   const page = await context.newPage();
   await page.goto(host.page.url().replace("role=host", "role=controller"));
   await page.fill("input", host.code === "ZZZZ" ? "YYYY" : "ZZZZ");

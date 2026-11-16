@@ -4,11 +4,13 @@
 
 **Blocked by:** 01 Ghép cặp bằng mã phòng
 
-**Status:** ready-for-agent
+**Status:** needs-device-test
 
 - [ ] Quyền cảm biến được xin sau một lần bấm của người dùng, hoạt động trên cả iPhone (Safari) và Android (Chrome)
-- [ ] Từ chối quyền hoặc máy không có cảm biến thì hiện hướng dẫn rõ ràng thay vì màn hình trống
+- [x] Từ chối quyền hoặc máy không có cảm biến thì hiện hướng dẫn rõ ràng thay vì màn hình trống
 - [ ] Vợt 3D trên máy tính xoay theo điện thoại mượt, không giật, đúng chiều trên cả iOS và Android
-- [ ] Nút căn chỉnh đặt lại hướng thẳng của vợt
-- [ ] Máy tính hiện độ trễ ước lượng và tần suất nhận dữ liệu
-- [ ] Phần chuyển dữ liệu cảm biến thành hướng vợt có test tự động với dữ liệu mẫu
+- [x] Nút căn chỉnh đặt lại hướng thẳng của vợt
+- [x] Máy tính hiện độ trễ ước lượng và tần suất nhận dữ liệu
+- [x] Phần chuyển dữ liệu cảm biến thành hướng vợt có test tự động với dữ liệu mẫu
+
+**Ghi chú:** Đã kiểm chứng bằng test tự động trên Chromium với cảm biến giả lập. Chưa thử trên iPhone và điện thoại Android thật; ngưỡng nhận diện cú vung cần tinh chỉnh bằng dữ liệu ghi từ máy thật.

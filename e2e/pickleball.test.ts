@@ -1,7 +1,8 @@
-import { afterAll, expect, test } from "vitest";
+import { afterAll, afterEach, expect, test } from "vitest";
 import type { Page } from "playwright";
-import { closeBrowser, openHost, openPhone, shot, swing } from "./helpers";
+import { closeBrowser, closePages, newContext, openHost, openPhone, shot, swing } from "./helpers";
 
+afterEach(closePages);
 afterAll(closeBrowser);
 
 const practiceHits = async (host: Page) =>

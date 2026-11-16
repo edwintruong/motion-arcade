@@ -1,6 +1,7 @@
-import { afterAll, expect, test } from "vitest";
-import { closeBrowser, openHost, openPhone, shot, swing } from "./helpers";
+import { afterAll, afterEach, expect, test } from "vitest";
+import { closeBrowser, closePages, newContext, openHost, openPhone, shot, swing } from "./helpers";
 
+afterEach(closePages);
 afterAll(closeBrowser);
 
 async function twoComputers() {
@@ -25,8 +26,8 @@ test("online: one computer opens a match, the other joins with its code, and bot
   await phoneB.page.waitForSelector("text=Chuẩn bị đỡ bóng");
 
   // A serves; B never swings, so the ball bounces twice on B's side: point to A.
-  await a.page.waitForTimeout(1000);
-  await swing(phoneA.page);
+  for (let i = 0; i < 10 && (await a.page.textContent(".banner"))!.includes("giao bóng"); i++)
+    await swing(phoneA.page);
   await b.page.waitForSelector("text=Bạn không đỡ được bóng");
   await a.page.waitForSelector("text=Đối thủ không đỡ được bóng");
   expect(await a.page.textContent("[data-points='0']")).toBe("1");

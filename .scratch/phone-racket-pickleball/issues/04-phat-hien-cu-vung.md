@@ -4,11 +4,13 @@
 
 **Blocked by:** 03 Vợt xoay theo điện thoại
 
-**Status:** ready-for-agent
+**Status:** needs-device-test
 
-- [ ] Cú vung được phát hiện ngay trên điện thoại và gửi dưới dạng một sự kiện có lực và thời điểm
-- [ ] Vung mạnh cho lực lớn hơn vung nhẹ một cách nhất quán
+- [x] Cú vung được phát hiện ngay trên điện thoại và gửi dưới dạng một sự kiện có lực và thời điểm
+- [x] Vung mạnh cho lực lớn hơn vung nhẹ một cách nhất quán
 - [ ] Cầm máy đi lại hoặc xoay chậm không tạo cú vung giả
-- [ ] Một lần vung chỉ tạo đúng một sự kiện
-- [ ] Máy tính có phản hồi hình và tiếng cho mỗi cú vung; điện thoại rung trên máy hỗ trợ
-- [ ] Bộ phát hiện cú vung có test tự động với các chuỗi dữ liệu cảm biến ghi lại (vung mạnh, vung nhẹ, không vung)
+- [x] Một lần vung chỉ tạo đúng một sự kiện
+- [x] Máy tính có phản hồi hình và tiếng cho mỗi cú vung; điện thoại rung trên máy hỗ trợ
+- [x] Bộ phát hiện cú vung có test tự động với các chuỗi dữ liệu cảm biến ghi lại (vung mạnh, vung nhẹ, không vung)
+
+**Ghi chú:** Đã kiểm chứng bằng test tự động trên Chromium với cảm biến giả lập. Chưa thử trên iPhone và điện thoại Android thật; ngưỡng nhận diện cú vung cần tinh chỉnh bằng dữ liệu ghi từ máy thật. Test dùng chuỗi dữ liệu tổng hợp (đường cong hình chuông), không phải dữ liệu ghi lại từ máy thật.
