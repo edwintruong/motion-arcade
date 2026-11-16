@@ -28,10 +28,17 @@ export function showController(app: HTMLElement) {
       <button disabled>Vào phòng</button>
     </form>
     <section data-screen="enable" hidden>
-      <p>Điện thoại sẽ là cây vợt của bạn. Cầm chắc tay nhé.</p>
+      <p>Điện thoại sẽ là cây vợt của bạn.</p>
+      <ol class="howto">
+        <li>Cầm điện thoại như cán vợt, màn hình hướng sang bên, nắm thật chắc.</li>
+        <li>Chĩa đầu điện thoại vào màn hình máy tính rồi bấm <b>Căn chỉnh</b>.</li>
+        <li>Vung ngang để đánh, hất lên để lốp, chém xuống để đập.</li>
+        <li>Đứng xa người và đồ vật xung quanh.</li>
+      </ol>
       <button data-act="enable">Bật cảm biến chuyển động</button>
     </section>
     <section data-screen="play" hidden>
+      <p class="seat"></p>
       <p class="say"></p>
       <p class="last"></p>
       <button data-act="calibrate">Căn chỉnh<small>Chĩa điện thoại vào màn hình rồi bấm</small></button>
@@ -161,6 +168,7 @@ export function showController(app: HTMLElement) {
         seat = { code: msg.code, slot: msg.slot };
         sessionStorage.setItem("seat", JSON.stringify(seat));
         show(paired);
+        $(".seat").textContent = `Bạn là Người chơi ${msg.slot + 1}`;
         say(`Đã kết nối phòng ${msg.code}`, "ok");
       } else if (msg.type === "peer-left") {
         // The computer closed the room.

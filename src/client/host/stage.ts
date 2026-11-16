@@ -147,6 +147,8 @@ export class Stage {
   /** Lobby view: a big paddle for each connected phone. */
   showLobby(slots: number[]) {
     this.lobby.visible = true;
+    this.camera.fov = 50;
+    this.camera.updateProjectionMatrix();
     this.camera.position.set(0, 0.9, 2.6);
     this.camera.lookAt(0, 0.1, 0);
     this.lobbyPaddles.forEach((paddle, slot) => {
@@ -265,9 +267,12 @@ export class Stage {
     this.lobby.visible = false;
     this.court.visible = true;
     this.scene.background = new THREE.Color(0x8fd3ff);
+    // A long lens from far away keeps both players upright in the side view.
+    this.camera.fov = view === "side" ? 24 : 50;
+    this.camera.updateProjectionMatrix();
     if (view === "side") {
-      this.camera.position.set(-15.5, 8.5, 0);
-      this.camera.lookAt(0, 0.6, 0);
+      this.camera.position.set(-34, 15, 0);
+      this.camera.lookAt(0, 0.4, 0);
     } else {
       const sign = view === "behind-0" ? 1 : -1;
       this.camera.position.set(0, 4.6, sign * 13.2);

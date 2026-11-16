@@ -44,6 +44,7 @@ export function showHost(app: HTMLElement) {
           <button data-mode="ai" data-level="normal">Vừa</button>
           <button data-mode="ai" data-level="hard">Khó</button>
         </div>
+        <button data-mode="local2">Hai người chung màn hình</button>
         <p class="hint"></p>
       </nav>
       <a href="?role=controller">Thiết bị này là điện thoại?</a>
@@ -97,9 +98,11 @@ export function showHost(app: HTMLElement) {
     say(slots.length ? "Điện thoại đã kết nối" : "Đang chờ điện thoại…", slots.length ? "ok" : "");
     for (const button of app.querySelectorAll<HTMLButtonElement>(".menu [data-mode]"))
       button.disabled = slots.length < neededPhones(button.dataset.mode!);
-    $(".hint").textContent = slots.length
-      ? "Chọn chế độ bằng chuột. Trong trận, mọi thứ điều khiển bằng cú vung."
-      : "Kết nối điện thoại để bắt đầu.";
+    $(".hint").textContent = !slots.length
+      ? "Kết nối điện thoại để bắt đầu."
+      : slots.length < 2
+        ? "Muốn chơi hai người: điện thoại thứ hai nhập cùng mã phòng."
+        : "Đã đủ hai điện thoại.";
     updatePause();
   }
 
@@ -132,11 +135,15 @@ export function showHost(app: HTMLElement) {
   /** The game waits whenever a phone it needs is missing. */
   function updatePause() {
     if (!session || !mode) return;
-    const missing = connectedSlots().length < neededPhones(mode.kind);
+    const slots = connectedSlots();
+    // Two-player games need both seats; the others just need somebody.
+    const absent = mode.kind === "local2" ? [0, 1].filter((s) => !slots.includes(s)) : [];
+    const missing = mode.kind === "local2" ? absent.length > 0 : slots.length === 0;
     session.setPaused(missing);
     $(".paused").hidden = !missing;
+    const who = absent.length ? `của Người chơi ${absent.map((s) => s + 1).join(" và ")} ` : "";
     $(".paused p").textContent =
-      `Điện thoại mất kết nối. Đang chờ nối lại… Nếu cần, nhập lại mã phòng ${code.textContent}.`;
+      `Điện thoại ${who}mất kết nối. Đang chờ nối lại… Nếu cần, nhập lại mã phòng ${code.textContent}.`;
   }
 
   app.addEventListener("click", (e) => {
@@ -144,6 +151,7 @@ export function showHost(app: HTMLElement) {
     if (!target || (target as HTMLButtonElement).disabled) return;
     if (target.dataset.act === "menu") toMenu();
     else if (target.dataset.mode === "practice") start({ kind: "practice" });
+    else if (target.dataset.mode === "local2") start({ kind: "local2" });
     else if (target.dataset.mode === "ai")
       start({ kind: "ai", level: target.dataset.level as AiLevel });
   });

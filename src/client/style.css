@@ -132,3 +132,5 @@ button:disabled { opacity: 0.45; cursor: default; }
 }
 .result h2 { font-size: 2.2rem; }
 .paused { position: absolute; top: 40%; }
+.controller .howto { text-align: left; margin: 0; padding-left: 1.3em; color: var(--muted); line-height: 1.5; font-size: 0.95rem; }
+.controller .seat { font-weight: 600; color: var(--accent); }

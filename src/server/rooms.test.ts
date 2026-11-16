@@ -99,14 +99,53 @@ test("the room code can be typed in lowercase with stray spaces", async () => {
   expect(await phone.next()).toEqual({ type: "room-joined", code, slot: 0 });
 });
 
-test("a second phone is told the room is full", async () => {
+test("two phones share a room, each in its own seat, and the computer knows who sent what", async () => {
+  const { host, code } = await hostWithRoom();
+  const first = await connect();
+  first.send({ type: "join-room", code });
+  expect(await first.next()).toEqual({ type: "room-joined", code, slot: 0 });
+  const second = await connect();
+  second.send({ type: "join-room", code });
+  expect(await second.next()).toEqual({ type: "room-joined", code, slot: 1 });
+  expect(await host.next()).toEqual({ type: "peer-joined", slot: 0 });
+  expect(await host.next()).toEqual({ type: "peer-joined", slot: 1 });
+
+  second.send({ type: "to-host", data: "from second" });
+  expect(await host.next()).toEqual({ type: "from-controller", slot: 1, data: "from second" });
+  host.send({ type: "to-controller", slot: 1, data: "only second" });
+  host.send({ type: "to-controller", data: "everyone" });
+  expect(await second.next()).toEqual({ type: "from-host", data: "only second" });
+  expect(await second.next()).toEqual({ type: "from-host", data: "everyone" });
+  expect(await first.next()).toEqual({ type: "from-host", data: "everyone" });
+});
+
+test("a third phone is told the room is full", async () => {
   const { code } = await hostWithRoom();
+  for (let i = 0; i < 2; i++) {
+    const phone = await connect();
+    phone.send({ type: "join-room", code });
+    await phone.next();
+  }
+  const third = await connect();
+  third.send({ type: "join-room", code });
+  expect(await third.next()).toEqual({ type: "error", reason: "room-full" });
+});
+
+test("when one of two phones drops out, it returns to its own seat", async () => {
+  const { host, code } = await hostWithRoom();
   const first = await connect();
   first.send({ type: "join-room", code });
   await first.next();
   const second = await connect();
   second.send({ type: "join-room", code });
-  expect(await second.next()).toEqual({ type: "error", reason: "room-full" });
+  await second.next();
+  await host.next();
+  await host.next();
+  second.leave();
+  expect(await host.next()).toEqual({ type: "peer-left", slot: 1 });
+  const back = await connect();
+  back.send({ type: "join-room", code, slot: 1 });
+  expect(await back.next()).toEqual({ type: "room-joined", code, slot: 1 });
 });
 
 test("a message the server cannot understand gets an error instead of crashing it", async () => {
