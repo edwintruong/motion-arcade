@@ -93,3 +93,42 @@ button:disabled { opacity: 0.45; cursor: default; }
 .phone .stats, .phone .swing { color: var(--muted); font-size: 0.9rem; min-height: 1.3em; }
 .power { height: 10px; border-radius: 5px; background: #2a3550; overflow: hidden; }
 .power i { display: block; height: 100%; width: 0; background: var(--accent); transition: width 0.12s; }
+
+/* ---------- menu ---------- */
+.menu {
+  display: flex; flex-direction: column; gap: 10px; align-items: stretch;
+  background: var(--panel); border-radius: 16px; padding: 16px; width: min(100%, 460px);
+}
+.menu button { padding: 12px 16px; }
+.menu .group { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.menu .group span { flex: 1 1 100%; text-align: left; color: var(--muted); font-size: 0.9rem; }
+.menu .group button { flex: 1; }
+.menu .group input {
+  flex: 1; min-width: 0; font: 700 1.1rem ui-monospace, monospace; text-transform: uppercase;
+  text-align: center; letter-spacing: 0.15em; padding: 11px 6px; border-radius: 12px;
+  border: 2px solid #33405a; background: #1a2232; color: var(--text);
+}
+.menu .hint { font-size: 0.85rem; }
+
+/* ---------- in game ---------- */
+.overlay.game { justify-content: flex-start; }
+.topbar { align-self: stretch; display: flex; justify-content: space-between; align-items: center; }
+.topbar button { padding: 8px 14px; font-size: 0.9rem; }
+.topbar .room { background: var(--panel); padding: 6px 12px; border-radius: 10px; font: 600 0.9rem ui-monospace, monospace; }
+.hud { display: flex; flex-direction: column; align-items: center; gap: 12px; pointer-events: none !important; }
+.scoreboard {
+  display: flex; gap: 22px; background: var(--panel); border-radius: 14px; padding: 10px 20px;
+  font-size: 1.15rem; margin-top: -44px;
+}
+.scoreboard b { font-size: 1.6rem; margin-left: 6px; }
+.scoreboard .serving::before { content: "● "; color: #f6e94a; }
+.banner {
+  font-size: 1.35rem; font-weight: 600; text-shadow: 0 2px 6px rgba(0, 0, 0, 0.7);
+  min-height: 1.6em;
+}
+.result, .paused {
+  background: var(--panel); border-radius: 18px; padding: 26px 40px;
+  display: flex; flex-direction: column; gap: 8px;
+}
+.result h2 { font-size: 2.2rem; }
+.paused { position: absolute; top: 40%; }
