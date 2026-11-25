@@ -1,10 +1,12 @@
 import { deviceOrientationToQuat, yawCalibration } from "../../shared/gestures/orientation";
 import { SwingDetector, type DetectedSwing } from "../../shared/gestures/swing";
+import { MovementDetector } from "../../shared/gestures/movement";
 import { IDENTITY, mul, type Quat } from "../../shared/quat";
 
 export interface SensorHandlers {
   onOrientation(q: Quat): void;
   onSwing(swing: DetectedSwing): void;
+  onMove?(movement: { x: number; y: number }): void;
 }
 
 export type SensorStart = "ok" | "denied" | "unavailable";
@@ -17,6 +19,7 @@ export class Sensors {
   private calibration: Quat | null = null;
   private detector = new SwingDetector();
   private lastSent = 0;
+  private movement = new MovementDetector();
 
   constructor(private handlers: SensorHandlers) {}
 
@@ -27,6 +30,8 @@ export class Sensors {
   /** Whatever the phone points at now becomes "straight at the screen". */
   calibrate() {
     this.calibration = yawCalibration(this.raw) ?? this.calibration;
+    this.movement.calibrate(this.current());
+    this.handlers.onMove?.({ x: 0, y: 0 });
   }
 
   /** Must be called from a tap: iOS only asks for permission then. */
@@ -51,12 +56,19 @@ export class Sensors {
       if (now - this.lastSent < 33) return; // ~30 Hz is plenty for drawing
       this.lastSent = now;
       this.handlers.onOrientation(this.current());
+      if (document.visibilityState === "visible")
+        this.handlers.onMove?.(this.movement.update(this.current(), now));
     });
     window.addEventListener("devicemotion", (e) => {
       const r = e.rotationRate;
       if (!r || r.alpha === null || r.beta === null || r.gamma === null) return;
+      const now = performance.now();
+      const speed = Math.hypot(r.beta, r.gamma, r.alpha);
+      this.movement.motion(speed, now);
+      if (speed >= 180) this.handlers.onMove?.({ x: 0, y: 0 });
+      if (document.visibilityState !== "visible") return;
       const swing = this.detector.push({
-        t: performance.now(),
+        t: now,
         // The browser names rates by axis: beta = x, gamma = y, alpha = z.
         rate: [r.beta, r.gamma, r.alpha],
         q: this.current(),

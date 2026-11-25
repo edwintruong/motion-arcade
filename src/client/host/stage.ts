@@ -25,7 +25,7 @@ export type CourtView = "behind-0" | "behind-1" | "side";
 
 export interface CourtFrame {
   ball: Vec3;
-  players: { x: number; z: number; swingAge: number; kind: SwingKind }[];
+  players: { x: number; z: number; swingAge: number; kind: SwingKind; power?: number }[];
   /** Latest phone orientation for each side that has a phone. */
   paddles: (Quat | undefined)[];
   /** Hide the far player (practice against the ball machine). */
@@ -40,7 +40,7 @@ export interface CourtSize {
   netHeight: number;
 }
 
-const SWING_SECONDS = 0.32;
+const SWING_SECONDS = 0.66;
 
 /** The 3D picture on the computer: renderer, lights and whatever is on show. */
 export class Stage {
@@ -282,35 +282,42 @@ export class Stage {
     this.ballMarker.position.set(this.ball.position.x, 0.025, this.ball.position.z);
 
     frame.players.forEach((p, side) => {
-      const { root, shoulder, paddle } = this.characters[side];
-      root.visible = !(frame.solo && side === 1);
       const character = this.characters[side];
-      const distance = Math.hypot(p.x - root.position.x, p.z - root.position.z);
+      const { root, torso, shoulder, elbow, freeShoulder, paddle, legs } = character;
+      root.visible = !(frame.solo && side === 1);
+      const dx = p.x - root.position.x, dz = p.z - root.position.z;
+      const distance = Math.hypot(dx, dz);
       const moving = dt > 0 && distance / dt > 0.15 && distance < 1;
       if (moving) character.stride += distance * 9;
       const step = moving ? Math.sin(character.stride) : 0;
-      character.feet.forEach((foot, i) => {
-        const phase = step * (i === 0 ? 1 : -1);
-        foot.position.z = -0.06 + phase * 0.16;
-        foot.position.y = 0.09 + Math.max(0, phase) * 0.12;
-      });
-      root.position.set(p.x, moving ? Math.abs(step) * 0.035 : 0, p.z);
-      const t = p.swingAge / SWING_SECONDS;
+      legs.forEach((leg, i) => { leg.rotation.x = step * (i === 0 ? 1 : -1) * .65; });
+      const breathing = Math.sin(performance.now() * .003 + side) * .008;
+      root.position.set(p.x, moving ? Math.abs(step) * .045 : breathing, p.z);
+      const power = p.power ?? .5;
+      const t = p.swingAge / (SWING_SECONDS - power * .16);
+      // Wind-up, contact, follow-through, then blend back to ready stance.
+      const envelope = t < 1 ? Math.sin(Math.PI * Math.max(0,t)) : 0;
+      const stroke = t < 1 ? Math.sin(Math.PI * Math.min(1, t / .68)) : 0;
+      const follow = t < 1 ? Math.sin(Math.PI * Math.max(0, (t - .3) / .7)) : 0;
+      const direction = p.kind === "backhand" ? -1 : 1;
+      const amplitude = .65 + power * .55;
+      torso.rotation.set(moving ? .08 : 0, direction * (stroke * -.45 + follow * .7) * amplitude, moving ? -dx / Math.max(distance,.01) * .06 : 0);
+      torso.position.y = .65 - envelope * .04;
+      freeShoulder.rotation.set(step * -.3 + envelope * .45, -direction * envelope * .35, -.15 - envelope * .35);
+      shoulder.rotation.set(.2, -.25, -.1);
+      elbow.rotation.set(.3, 0, 0);
       if (t < 1) {
-        // Sweep the arm through the stroke; ease out so it snaps then settles.
-        const e = 1 - (1 - t) * (1 - t);
-        paddle.rotation.set(-Math.PI / 2, 0, 0);
-        if (p.kind === "lob") shoulder.rotation.set(-0.9 + e * 2.3, 0, 0);
-        else if (p.kind === "smash") shoulder.rotation.set(2.1 - e * 2.6, 0, 0);
-        else {
-          const from = p.kind === "forehand" ? -1.7 : 1.5;
-          shoulder.rotation.set(0.15, from + e * (p.kind === "forehand" ? 2.9 : -2.7), 0);
-        }
+        if (p.kind === "lob") shoulder.rotation.x += (stroke * -.6 + follow * 1.4) * amplitude;
+        else if (p.kind === "smash") shoulder.rotation.x += (stroke * 2.3 - follow * .8) * amplitude;
+        else shoulder.rotation.y += direction * (stroke * -1.35 + follow * 2.2) * amplitude;
+        elbow.rotation.x += envelope * .55;
+        elbow.rotation.y = direction * (stroke * -.5 + follow * .45);
+        paddle.rotation.set(-Math.PI/2 + envelope * .4, 0, direction * follow * .3);
+        legs[side === 0 ? 1 : 0].rotation.x += envelope * .2;
       } else {
-        shoulder.rotation.set(0, 0, 0);
         const q = frame.paddles[side];
         if (q) setFromPhone(paddle, q);
-        else paddle.rotation.set(-Math.PI / 2 + 0.5, 0, 0);
+        else paddle.rotation.set(-Math.PI / 2 + .5, 0, 0);
       }
     });
   }

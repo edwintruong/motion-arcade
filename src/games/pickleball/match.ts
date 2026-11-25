@@ -49,6 +49,7 @@ export interface PlayerState {
   /** Seconds since this player last swung, for animation. */
   swingAge: number;
   kind: SwingKind;
+  power: number;
 }
 
 export interface MatchOptions {
@@ -85,7 +86,7 @@ const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
 /**
  * One game of pickleball singles: ball, players, rules and score.
  * Pure simulation: feed it swings and time, read `state` and events.
- * Players run to the ball by themselves; a swing only decides when.
+ * Players auto-position unless steered by a live phone movement input.
  */
 export class Match {
   readonly state: {
@@ -109,6 +110,8 @@ export class Match {
   private opts: Required<MatchOptions>;
   private events: MatchEvent[] = [];
   private carry = 0;
+  private movement = [{ x: 0, y: 0, until: 0 }, { x: 0, y: 0, until: 0 }];
+  private remotePosition: ({ x: number; z: number } | undefined)[] = [];
 
   constructor(options: MatchOptions) {
     this.opts = {
@@ -123,6 +126,7 @@ export class Match {
       z: zSign(side) * HOME_DEPTH,
       swingAge: 9,
       kind: "forehand",
+      power: 0.5,
     });
     this.state = {
       phase: "serve",
@@ -139,9 +143,34 @@ export class Match {
   }
 
   restart() {
+    this.movement.forEach(m => { m.until = 0; });
+    this.remotePosition = [];
     this.state.score = newScore(0);
     this.state.rallies = 0;
     this.startServe();
+  }
+
+  /** Input expires quickly if a controller disconnects or its tab is hidden. */
+  move(side: Side, x: number, y: number) {
+    if (!this.owns(side) || !Number.isFinite(x) || !Number.isFinite(y)) return;
+    const length = Math.max(1, Math.hypot(x, y));
+    this.movement[side] = { x: x / length, y: y / length, until: this.time + 0.25 };
+  }
+
+  canHit(side: Side) {
+    const s = this.state;
+    if (s.phase === "serve")
+      return this.opts.mode === "match" && s.score.server === side && s.phaseTime >= SERVE_DELAY;
+    return this.aim(side).inReach && (this.opts.mode === "practice" || s.bounces > 0 ||
+      (s.shots > 2 && Math.abs(s.players[side].z) >= COURT.kitchen));
+  }
+
+  applyRemotePlayer(side: Side, x: number, z: number) {
+    if (this.owns(side)) return;
+    this.remotePosition[side] = {
+      x: clamp(x, -COURT.halfWidth - 1.5, COURT.halfWidth + 1.5),
+      z: zSign(side) * clamp(z * zSign(side), 0.5, COURT.halfLength + 2.5),
+    };
   }
 
   /** Whether `side` could hit the ball now, and how early (+) or late (-) a swing would be. */
@@ -169,6 +198,7 @@ export class Match {
     const me = s.players[side];
     me.swingAge = 0;
     me.kind = swing.kind;
+    me.power = clamp(swing.power, 0, 1);
 
     const aim = this.aim(side);
     if (!aim.inReach) {
@@ -212,6 +242,7 @@ export class Match {
     s.shots = hit.shot;
     s.players[hit.side].swingAge = 0;
     s.players[hit.side].kind = hit.kind;
+    s.players[hit.side].power = hit.power;
     this.events.push({ type: "hit", ...hit, remote: true });
   }
 
@@ -333,6 +364,7 @@ export class Match {
     const me = s.players[side];
     me.swingAge = 0;
     me.kind = "forehand";
+    me.power = clamp(swing.power, 0, 1);
     const power = clamp(swing.power, 0, 1);
     const depth = 3.4 + 2.8 * power + Math.max(0, power - 0.92) * 10;
     const v = launchTo(s.ball.p, -this.serveX(side), -zSign(side) * depth, lerp(1.5, 1.05, power));
@@ -403,6 +435,22 @@ export class Match {
     const s = this.state;
     const me = s.players[side];
     const sign = zSign(side);
+    if (!this.owns(side)) {
+      const target = this.remotePosition[side];
+      if (target) {
+        const blend = 1 - Math.exp(-STEP * 18);
+        me.x += (target.x - me.x) * blend;
+        me.z += (target.z - me.z) * blend;
+      }
+      return;
+    }
+    const input = this.movement[side];
+    if (s.phase === "rally" && input.until > this.time && Math.hypot(input.x, input.y) > 0.08) {
+      const stride = this.opts.speeds[side] * STEP;
+      me.x = clamp(me.x + input.x * sign * stride, -COURT.halfWidth - 1.5, COURT.halfWidth + 1.5);
+      me.z = sign * clamp(me.z * sign + input.y * stride, 0.5, COURT.halfLength + 2.5);
+      return;
+    }
     let x = 0;
     let z = sign * HOME_DEPTH;
 

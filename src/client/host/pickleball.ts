@@ -39,6 +39,10 @@ export class PickleballSession {
   private overFor = 0;
   private practice = { hits: 0, good: 0 };
   private el: HTMLElement;
+  private queued: ({ swing: Swing; remaining: number } | undefined)[] = [];
+  private networkClock = 0;
+  private cue = ["", ""];
+  private feedbackFor = [0, 0];
 
   constructor(
     private stage: Stage,
@@ -63,12 +67,15 @@ export class PickleballSession {
     hud.innerHTML = `
       <div class="scoreboard"></div>
       <div class="banner"></div>
+      <div class="play-guide">Hướng điện thoại để di chuyển · Về tư thế căn chỉnh để tự đón bóng · Vung nhanh/chậm để chọn lực</div>
+      <div class="hit-cue" aria-live="polite"></div>
       <div class="result" hidden><h2></h2><p>Vung vợt để chơi lại</p></div>`;
     this.el = hud;
     this.drawScore();
     if (mode.kind === "practice") {
       this.banner("Máy sẽ phát bóng. Vung khi bóng tới!");
       phones.say(undefined, "Vung khi bóng tới!");
+      this.feedbackFor[0] = 1.3;
     }
   }
 
@@ -106,7 +113,14 @@ export class PickleballSession {
       if (this.overFor > 1.5) this.restart();
       return;
     }
-    this.match.swing(this.sideOf(slot), swing);
+    const side = this.sideOf(slot);
+    // A small early-input window helps with phone/network latency, without auto-hitting.
+    if (this.match.canHit(side)) this.match.swing(side, swing);
+    else this.queued[side] = { swing, remaining: 0.18 };
+  }
+
+  onMove(slot: number, x: number, y: number) {
+    if (!this.paused) this.match.move(this.sideOf(slot), x, y);
   }
 
   onOrientation(slot: number, q: Quat) {
@@ -116,9 +130,14 @@ export class PickleballSession {
   setPaused(paused: boolean) {
     // An online match cannot stop for one side; the other player is still playing.
     this.paused = paused && this.mode.kind !== "online";
+    if (paused) {
+      this.queued = [];
+      for (const side of [0, 1] as Side[]) this.match.move(side, 0, 0);
+    }
   }
 
   private restart() {
+    this.queued = [];
     this.match.restart();
     if (this.mode.kind === "online") this.mode.send({ k: "rematch" });
   }
@@ -130,6 +149,15 @@ export class PickleballSession {
     if (!this.paused) {
       if (s.phase === "match-over") this.overFor += dt;
       this.ai?.update(this.match, dt);
+      for (const side of [0, 1] as Side[]) {
+        const queued = this.queued[side];
+        if (!queued) continue;
+        queued.remaining -= dt;
+        if (this.match.canHit(side) || queued.remaining <= 0) {
+          this.match.swing(side, queued.swing);
+          this.queued[side] = undefined;
+        }
+      }
       for (const event of this.match.step(dt)) {
         if (this.mode.kind === "online") {
           const wire = toWire(event);
@@ -137,6 +165,29 @@ export class PickleballSession {
         }
         this.on(event);
       }
+      this.networkClock += dt;
+      if (this.mode.kind === "online" && this.networkClock >= 0.1) {
+        this.networkClock = 0;
+        const { x, z } = s.players[this.mode.side];
+        this.mode.send({ k: "player", side: this.mode.side, x, z });
+      }
+      const hints: string[] = [];
+      for (const side of [0, 1] as Side[]) {
+        if (!this.isHuman(side)) continue;
+        this.feedbackFor[side] = Math.max(0, this.feedbackFor[side] - dt);
+        const ready = this.match.canHit(side);
+        const text = ready ? (s.phase === "serve" ? "Đánh để giao bóng" : "Đánh ngay!") :
+          s.phase === "rally" ? (s.lastHitter === side ? "Về vị trí · chuẩn bị đỡ" : "Đón bóng · chờ bóng tới") : "Chuẩn bị ván tiếp theo";
+        hints.push(`${this.mode.kind === "local2" ? this.name(side) + ": " : ""}${text}`);
+        if (text !== this.cue[side] && this.feedbackFor[side] === 0) {
+          this.cue[side] = text;
+          this.phones.say(this.slotOf(side), text);
+        }
+      }
+      const hint = this.el.querySelector<HTMLElement>(".hit-cue")!;
+      const hintText = hints.join(" · ");
+      if (hint.textContent !== hintText) hint.textContent = hintText;
+      hint.classList.toggle("ready", ([0, 1] as Side[]).some(side => this.isHuman(side) && this.match.canHit(side)));
     }
     this.el.querySelector<HTMLElement>(".result")!.hidden = s.phase !== "match-over";
     this.stage.drawCourt(
@@ -156,6 +207,8 @@ export class PickleballSession {
       case "serve-ready":
         this.drawScore();
         if (this.mode.kind === "practice") return;
+        this.feedbackFor = [0.9, 0.9];
+        this.cue = ["", ""];
         this.banner(
           this.isHuman(e.server)
             ? `${this.name(e.server)} giao bóng: vung để giao`
@@ -174,9 +227,19 @@ export class PickleballSession {
           this.phones.buzz(this.slotOf(e.side), 40);
         if (this.mode.kind === "practice" && e.side === 0) this.practice.hits++;
         if (e.shot > 1) this.banner("");
+        if (this.isHuman(e.side)) {
+          this.feedbackFor[e.side] = 0.7;
+          this.cue[e.side] = "";
+          this.phones.say(this.slotOf(e.side), `Đánh trúng · lực ${Math.round(e.power * 100)}%`);
+        }
         return;
       case "whiff":
         sounds.swoosh(0.3);
+        if (this.isHuman(e.side)) {
+          this.feedbackFor[e.side] = 0.7;
+          this.cue[e.side] = "";
+          this.phones.say(this.slotOf(e.side), "Chưa tới bóng · chờ tín hiệu Đánh ngay!");
+        }
         return;
       case "bounce":
         sounds.bounce();

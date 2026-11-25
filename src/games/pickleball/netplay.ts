@@ -6,9 +6,10 @@ import type { Match, MatchEvent, Reason } from "./match";
 /**
  * What two computers playing each other online tell one another.
  * Between hits the ball's flight is fully determined, so only hits and
- * rally results need to cross the network.
+ * rally results determine the ball. Player positions are also sent for animation.
  */
 export type Wire =
+  | { k: "player"; side: Side; x: number; z: number }
   | { k: "hit"; side: Side; kind: SwingKind; power: number; p: Vec3; v: Vec3; shot: number }
   | { k: "over"; winner: Side; reason: Reason; points: [number, number]; server: Side; champion: Side | null }
   | { k: "rematch" };
@@ -32,6 +33,11 @@ const vec = (v: unknown): v is Vec3 => Array.isArray(v) && v.length === 3 && v.e
 export function applyWire(match: Match, data: unknown): boolean {
   const m = data as Record<string, unknown> | null;
   if (typeof m !== "object" || m === null) return false;
+  if (m.k === "player") {
+    if (!side(m.side) || match.owns(m.side) || !num(m.x) || !num(m.z)) return false;
+    match.applyRemotePlayer(m.side, m.x, m.z);
+    return true;
+  }
   if (m.k === "hit") {
     const ok = side(m.side) && KINDS.includes(m.kind) && num(m.power) && vec(m.p) && vec(m.v) && Number.isInteger(m.shot);
     if (!ok || match.owns(m.side as Side)) return false;

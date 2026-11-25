@@ -209,6 +209,8 @@ export function showHost(app: HTMLElement) {
       phone.count++;
       if (session) session.onOrientation(slot, msg.q);
       else stage.setLobbyPaddle(slot, msg.q);
+    } else if (msg.k === "move") {
+      session?.onMove(slot, msg.x, msg.y);
     } else if (msg.k === "pong") {
       phone.latency = (performance.now() - msg.t) / 2;
     } else if (msg.k === "swing") {

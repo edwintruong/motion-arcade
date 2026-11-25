@@ -33,6 +33,7 @@ export function showController(app: HTMLElement) {
         <li>Cầm điện thoại như cán vợt, màn hình hướng sang bên, nắm thật chắc.</li>
         <li>Chĩa đầu điện thoại vào màn hình máy tính rồi bấm <b>Căn chỉnh</b>.</li>
         <li>Vung ngang để đánh, hất lên để lốp, chém xuống để đập.</li>
+        <li>Hướng nhẹ đầu điện thoại sang trái/phải để chạy; hạ đầu để tiến, nâng để lùi. Trở về tư thế căn chỉnh để tự đón bóng.</li>
         <li>Đứng xa người và đồ vật xung quanh.</li>
       </ol>
       <button data-act="enable">Bật cảm biến chuyển động</button>
@@ -41,6 +42,11 @@ export function showController(app: HTMLElement) {
       <p class="seat"></p>
       <p class="say"></p>
       <p class="last"></p>
+      <div class="motion-feedback" aria-label="Điều khiển chuyển động">
+        <span class="movement">Tự đón bóng</span>
+        <div class="power"><i></i></div>
+        <small>Vung nhẹ → bóng nhẹ · Vung nhanh → bóng mạnh<br>Sau cú đánh, đưa điện thoại về tư thế căn chỉnh</small>
+      </div>
       <button data-act="calibrate">Căn chỉnh<small>Chĩa điện thoại vào màn hình rồi bấm</small></button>
       <button data-act="hand" class="quiet"></button>
     </section>
@@ -81,12 +87,20 @@ export function showController(app: HTMLElement) {
   const toHost = (data: ControllerMsg) => conn?.send({ type: "to-host", data });
 
   const sensors = new Sensors({
+    onMove(movement) {
+      if (!online || document.visibilityState !== "visible") return;
+      toHost({ k: "move", ...movement });
+      const { x, y } = movement;
+      $(".movement").textContent = Math.hypot(x, y) < 0.08 ? "Tự đón bóng" :
+        `${y < -0.1 ? "↑ Tiến " : y > 0.1 ? "↓ Lùi " : ""}${x < -0.1 ? "← Trái" : x > 0.1 ? "→ Phải" : ""}`;
+    },
     onOrientation: (q) => toHost({ k: "o", q }),
     onSwing(swing) {
       toHost({ k: "swing", ...swing });
       navigator.vibrate?.(25);
       $(".last").textContent =
         `${KIND_NAMES[swing.kind]} · lực ${Math.round(swing.power * 100)}%`;
+      $(".motion-feedback .power i").style.width = `${Math.round(swing.power * 100)}%`;
     },
   });
 
@@ -111,6 +125,7 @@ export function showController(app: HTMLElement) {
     } catch {}
   };
   document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState !== "visible") toHost({ k: "move", x: 0, y: 0 });
     if (document.visibilityState === "visible" && paired !== "enable") keepAwake();
   });
 
@@ -196,6 +211,7 @@ export function showController(app: HTMLElement) {
     },
     onClose() {
       online = false;
+      $(".movement").textContent = "Mất kết nối · dừng điều khiển";
       refresh();
       say("Mất kết nối. Đang nối lại…", "bad");
     },

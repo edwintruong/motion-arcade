@@ -63,6 +63,12 @@ button:disabled { opacity: 0.45; cursor: default; }
 .controller input:focus { outline: none; border-color: var(--accent); }
 .controller .say { font-size: 1.3rem; color: var(--text); min-height: 3em; }
 .controller .last { min-height: 1.5em; }
+.motion-feedback { display: grid; gap: 10px; padding: 14px; background: #fffaf2; border: 1px solid #d8cebf; border-radius: 16px; }
+.motion-feedback .movement { font-weight: 700; color: #47745a; }
+.motion-feedback small { color: var(--muted); line-height: 1.5; }
+.play-guide { position: absolute; bottom: 16px; left: 16px; right: 16px; font-size: .85rem; background: var(--panel); border-radius: 12px; padding: 10px; }
+.hit-cue { padding: 8px 18px; border-radius: 24px; color: var(--muted); background: var(--panel); font-weight: 600; }
+.hit-cue.ready { background: #397553; color: #fff; box-shadow: 0 0 0 5px #39755325; }
 .controller [data-act="calibrate"] { padding: 36px 16px; font-size: 1.4rem; }
 .controller .pads { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .controller .pads button { padding: 30px 8px; }

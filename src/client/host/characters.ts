@@ -102,17 +102,31 @@ export function makeCharacter(id: string) {
     mesh(new THREE.BoxGeometry(.025,.44,.025),white,0,.87,-.25);
     for(const side of [-1,1]) { const collar=orb(accent,side*.09,1.09,-.19,.08,.035,.065);collar.rotation.z=side*.4; }
   } else { orb(accent,0,1.08,-.18,.15,.055,.09); }
-  for(const side of [-1,1]) mesh(new THREE.CapsuleGeometry(.085,.24,6,12),ink,side*.13,.29,0);
-  const freeArm=mesh(new THREE.CapsuleGeometry(.075,.3,6,12),shirt,-.32,.98,0);freeArm.rotation.z=-.18;
-  orb(skin,-.35,.76,0,.08);
-  const shoulder=new THREE.Group();shoulder.position.set(.3,1.15,0);root.add(shoulder);
-  const arm=mesh(new THREE.CapsuleGeometry(.065,.4,6,12),shirt,0,0,-.25,shoulder);arm.rotation.x=-Math.PI/2;
-  orb(skin,0,0,-.48,.078,.078,.078,shoulder);
-  const hand=new THREE.Group();hand.position.z=-.5;shoulder.add(hand);
-  const paddle=makePaddle(d.accent);paddle.scale.setScalar(1.5);hand.add(paddle);
-  const feet=[-1,1].map(side=>orb(white,side*.15,.09,-.06,.115,.085,.19));
+  // Separate torso, shoulders, elbows and hips so strokes move the whole body.
+  const torso = new THREE.Group(); torso.position.y = .65;
+  for (const child of [...root.children]) { root.remove(child); child.position.y -= .65; torso.add(child); }
+  root.add(torso);
+  const freeShoulder = new THREE.Group(); freeShoulder.position.set(-.32,.43,0); torso.add(freeShoulder);
+  mesh(new THREE.CapsuleGeometry(.075,.3,6,12),shirt,0,-.16,0,freeShoulder);
+  orb(skin,0,-.37,0,.08,.08,.08,freeShoulder);
+  const shoulder = new THREE.Group(); shoulder.position.set(.3,.5,0); torso.add(shoulder);
+  const arm = mesh(new THREE.CapsuleGeometry(.075,.16,6,12),shirt,0,0,-.13,shoulder);
+  arm.rotation.x = -Math.PI/2;
+  const elbow = new THREE.Group(); elbow.position.z = -.26; shoulder.add(elbow);
+  const forearm = mesh(new THREE.CapsuleGeometry(.06,.15,6,12),skin,0,0,-.11,elbow);
+  forearm.rotation.x = -Math.PI/2;
+  orb(skin,0,0,-.23,.078,.078,.078,elbow);
+  const hand = new THREE.Group(); hand.position.z = -.25; elbow.add(hand);
+  const paddle = makePaddle(d.accent); paddle.scale.setScalar(1.5); hand.add(paddle);
+  const feet: THREE.Mesh[] = [];
+  const legs = [-1,1].map(side => {
+    const hip = new THREE.Group(); hip.position.set(side*.14,.53,0); root.add(hip);
+    mesh(new THREE.CapsuleGeometry(.085,.24,6,12),ink,0,-.24,0,hip);
+    feet.push(orb(white,0,-.44,-.06,.115,.085,.19,hip));
+    return hip;
+  });
   root.traverse(o=>{o.castShadow=true;});
-  return {root,shoulder,paddle,feet,stride:0};
+  return {root,torso,shoulder,elbow,freeShoulder,paddle,feet,legs,stride:0};
 }
 
 export function disposeCharacter(character: ReturnType<typeof makeCharacter>) {

@@ -6,6 +6,8 @@ export type ControllerMsg =
   /** Calibrated orientation, streamed while the sensors are on. */
   | { k: "o"; q: Quat }
   | { k: "swing"; power: number; kind: SwingKind }
+  /** Screen-relative joystick: up is towards the net. */
+  | { k: "move"; x: number; y: number }
   | { k: "pong"; t: number };
 
 /** What the computer tells a phone. */
@@ -33,5 +35,9 @@ export function parseControllerMsg(data: unknown): ControllerMsg | null {
       kind: m.kind as SwingKind,
     };
   if (m.k === "pong" && num(m.t)) return { k: "pong", t: m.t };
+  if (m.k === "move" && num(m.x) && num(m.y)) {
+    const length = Math.max(1, Math.hypot(m.x, m.y));
+    return { k: "move", x: m.x / length, y: m.y / length };
+  }
   return null;
 }

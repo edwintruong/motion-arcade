@@ -48,7 +48,9 @@ Cách đưa lên web lâu dài: xem [docs/DEPLOY.md](docs/DEPLOY.md). Bản đã
 
 1. Cầm điện thoại như cán vợt, bấm **Bật cảm biến chuyển động**.
 2. Chĩa đầu điện thoại vào màn hình rồi bấm **Căn chỉnh**.
-3. Nhân vật tự chạy tới bóng; bạn chỉ lo vung đúng lúc.
+3. Giữ điện thoại ở tư thế đã căn chỉnh để nhân vật tự chạy tới bóng. Muốn chủ động di chuyển, hướng nhẹ đầu điện thoại trái/phải; hạ đầu để tiến, nâng đầu để lùi. Không cần bấm thêm nút.
+   - Hướng càng xa tư thế trung tâm, chạy càng nhanh. Sau cú vung, trở về tư thế căn chỉnh trước khi điều hướng tiếp để tránh chạy nhầm theo đà tay.
+   - Khi hiện **Đánh ngay!**, bóng đang trong tầm đánh hợp lệ. Game hỗ trợ cú vung sớm tối đa 0,18 giây, không tự đánh thay bạn.
    - Vung sớm hay muộn làm bóng lệch sang hai bên; vung mạnh thì bóng đi nhanh và sâu, mạnh quá thì ra ngoài.
    - Vung ngang là thuận tay hoặc trái tay, hất lên là lốp, chém xuống là đập.
 4. Luật pickleball đơn: giao bóng chéo sân, cú giao và cú trả giao phải để nảy rồi mới đánh, không vô-lê khi đứng trong vùng cấm sát lưới, chỉ bên giao bóng mới ghi điểm, đánh tới 11 và hơn 2 điểm.
