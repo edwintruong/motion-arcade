@@ -1,11 +1,11 @@
 :root {
-  color-scheme: dark;
-  --bg: #10151f;
-  --panel: rgba(26, 34, 50, 0.88);
-  --text: #eef2f8;
-  --muted: #a3afc2;
-  --accent: #4fd1a5;
-  --danger: #ff7a7a;
+  color-scheme: light;
+  --bg: #f6f1e7;
+  --panel: rgba(255, 252, 246, 0.94);
+  --text: #403b33;
+  --muted: #766d60;
+  --accent: #b8583f;
+  --danger: #b93636;
   font-family: system-ui, sans-serif;
 }
 * { box-sizing: border-box; }
@@ -22,11 +22,11 @@ button {
   border: 0;
   border-radius: 14px;
   background: var(--accent);
-  color: #06281d;
+  color: #fffaf2;
   cursor: pointer;
 }
 button small { display: block; font-weight: 400; font-size: 0.8rem; margin-top: 4px; }
-button.quiet { background: #2a3550; color: var(--text); font-weight: 500; font-size: 0.95rem; }
+button.quiet { background: #e9dfd0; color: var(--text); font-weight: 500; font-size: 0.95rem; }
 button:disabled { opacity: 0.45; cursor: default; }
 .status { font-size: 1.1rem; color: var(--text); min-height: 1.5em; }
 .status.ok { color: var(--accent); }
@@ -55,8 +55,8 @@ button:disabled { opacity: 0.45; cursor: default; }
   letter-spacing: 0.2em;
   padding: 14px 8px;
   border-radius: 14px;
-  border: 2px solid #33405a;
-  background: #1a2232;
+  border: 2px solid #d8cebf;
+  background: #fffaf2;
   color: var(--text);
   width: 100%;
 }
@@ -91,7 +91,7 @@ button:disabled { opacity: 0.45; cursor: default; }
   background: var(--panel); border-radius: 14px; padding: 12px 16px; min-width: 240px;
 }
 .phone .stats, .phone .swing { color: var(--muted); font-size: 0.9rem; min-height: 1.3em; }
-.power { height: 10px; border-radius: 5px; background: #2a3550; overflow: hidden; }
+.power { height: 10px; border-radius: 5px; background: #e9dfd0; overflow: hidden; }
 .power i { display: block; height: 100%; width: 0; background: var(--accent); transition: width 0.12s; }
 
 /* ---------- menu ---------- */
@@ -106,7 +106,7 @@ button:disabled { opacity: 0.45; cursor: default; }
 .menu .group input {
   flex: 1; min-width: 0; font: 700 1.1rem ui-monospace, monospace; text-transform: uppercase;
   text-align: center; letter-spacing: 0.15em; padding: 11px 6px; border-radius: 12px;
-  border: 2px solid #33405a; background: #1a2232; color: var(--text);
+  border: 2px solid #d8cebf; background: #fffaf2; color: var(--text);
 }
 .menu .hint { font-size: 0.85rem; }
 
@@ -121,9 +121,9 @@ button:disabled { opacity: 0.45; cursor: default; }
   font-size: 1.15rem; margin-top: -44px;
 }
 .scoreboard b { font-size: 1.6rem; margin-left: 6px; }
-.scoreboard .serving::before { content: "● "; color: #f6e94a; }
+.scoreboard .serving::before { content: "● "; color: #a85832; }
 .banner {
-  font-size: 1.35rem; font-weight: 600; text-shadow: 0 2px 6px rgba(0, 0, 0, 0.7);
+  font-size: 1.35rem; font-weight: 600; text-shadow: none;
   min-height: 1.6em;
 }
 .result, .paused {
@@ -134,3 +134,78 @@ button:disabled { opacity: 0.45; cursor: default; }
 .paused { position: absolute; top: 40%; }
 .controller .howto { text-align: left; margin: 0; padding-left: 1.3em; color: var(--muted); line-height: 1.5; font-size: 0.95rem; }
 .controller .seat { font-weight: 600; color: var(--accent); }
+
+/* Pickle Garden — warm paper, clay accents and soft garden greens. */
+button { transition: transform .15s, background .15s; border: 1px solid transparent; }
+button:not(:disabled):hover { transform: translateY(-2px); filter: brightness(1.06); }
+button:focus-visible, a:focus-visible, input:focus-visible { outline: 3px solid #759b83; outline-offset: 4px; }
+.eyebrow { font-size: .75rem; letter-spacing: .18em; font-weight: 700; color: #88674f; }
+.lobby { padding: 42px 6vw 24px; display: grid; grid-template-columns: 1fr 400px; grid-template-rows: 1fr auto auto; gap: 16px 5vw; text-align: left; overflow: auto; }
+.lobby header { align-items: flex-start; align-self: start; gap: 14px; max-width: 530px; }
+.lobby h1 { font: 500 clamp(2.5rem, 4vw, 4.6rem)/1.05 Georgia, serif; letter-spacing: -.05em; }
+.lobby h1 span { display: block; margin-top: 18px; font: 400 1.2rem/1.5 system-ui, sans-serif; letter-spacing: 0; color: #766d60; }
+.lobby header > p { max-width: 370px; font-size: .9rem; }
+.code { font-size: 2rem; border: 1px dashed #bea58b; letter-spacing: .2em; padding: 12px 18px; }
+.lobby .menu { grid-column: 2; grid-row: 1 / 3; align-self: center; width: 100%; gap: 16px; padding: 26px; border: 1px solid #e0d5c4; border-radius: 26px; box-shadow: 0 18px 60px #72563812; }
+.menu h2 { font: 500 2rem Georgia, serif; margin-bottom: 6px; }
+.menu .group button, .menu [data-mode="local2"] { background: #eee5d7; color: #50473b; }
+.menu .group button:hover { background: #e3d4c1; }
+.menu .group span { font-size: .9rem; }
+.menu .online { border-top: 1px solid #e4dacb; padding-top: 16px; }
+.menu .online button { font-size: .9rem; padding: 12px 8px; }
+.menu .online input { flex-basis: 100%; order: 2; }
+.menu .hint, .online-status { font-size: .85rem; }
+.online-status:empty { display: none; }
+.lobby .phones { grid-column: 1; grid-row: 2; justify-content: flex-start; gap: 8px; }
+.phone { min-width: 190px; border: 1px solid #e0d5c4; }
+.lobby > a { grid-column: 1 / -1; font-size: .85rem; }
+.scoreboard { border: 1px solid #ddcfbc; box-shadow: 0 6px 24px #56422b14; padding: 12px 24px; border-radius: 22px; }
+.banner:not(:empty) { background: #fffaf2ed; border: 1px solid #e1d4bf; border-radius: 30px; padding: 10px 22px; font-size: 1rem; }
+.topbar button, .topbar .room { border: 1px solid #d8cbb7; }
+.status.ok { color: #477557; }
+.controller { background: radial-gradient(ellipse at top, #e5ebd9, #f6f1e7 70%); overflow: auto; max-height: 100dvh; }
+@media (max-width: 800px) {
+  .lobby { display: flex; padding: 24px; align-items: stretch; justify-content: flex-start; gap: 22px; background: #f6f1e7ed; }
+  .lobby header { align-items: center; text-align: center; max-width: none; }
+  .lobby h1 { font-size: 2.8rem; }
+  .lobby h1 span { font-size: 1rem; margin-top: 10px; }
+  .lobby .menu { max-width: 460px; align-self: center; }
+  .lobby .phones { margin-top: 0; justify-content: center; }
+  .lobby > a { text-align: center; }
+  .scoreboard { margin-top: 0; font-size: .9rem; gap: 12px; }
+  .scoreboard b { font-size: 1.3rem; }
+}
+@media (prefers-reduced-motion: reduce) { button { transition: none; } }
+
+/* Original character roster, shared by solo and local two-player sessions. */
+.character-picker { border-block: 1px solid #e4dacb; padding-block: 12px; }
+.character-slots { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.menu .character-slot { background: #f3eadb; color: #514639; text-align: left; padding: 10px 12px; border: 1px solid #dfcfb9; }
+.character-slot > span { display:block; font-size: .75rem; font-weight: 400; }
+.character-slot strong { display:block; font: 500 1.3rem Georgia,serif; margin-top: 4px; }
+.character-slot small { font-size: .75rem; color: #76624c; }
+.character-note { font-size: .75rem; margin-top: 8px; }
+.character-dialog { color: var(--text); background: #fffaf2; border: 1px solid #d8c7b0; border-radius: 26px; padding: 26px; width: min(900px, calc(100vw - 32px)); max-height: calc(100dvh - 32px); overflow-y: auto; box-shadow: 0 30px 100px #34291f40; }
+.character-dialog::backdrop { background: #453c3377; backdrop-filter: blur(6px); }
+.roster-heading { display:flex; justify-content:space-between; align-items:center; gap:16px; }
+.roster-heading h2 { margin: 6px 0; }
+.roster-target { font-size:.9rem; margin: 8px 0 20px; }
+.roster-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; }
+.menu .character-card { position:relative; padding:8px 8px 14px; color:var(--text); text-align:left; background:#fffdf8; border:2px solid #eadfce; border-radius:20px; }
+.menu .character-card[aria-pressed="true"] { border-color:#a6533e; background:#f9eadf; box-shadow:0 0 0 2px #a6533e20; }
+.character-art { display:block; height:175px; border-radius:13px; background:var(--portrait-bg); text-align:center; overflow:hidden; }
+.character-art img { width:100%; height:100%; object-fit:contain; }
+.character-card-title { display:flex; align-items:center; justify-content:space-between; gap:4px; margin:10px 4px 6px; font:500 1.4rem Georgia,serif; }
+.character-card-title small { font:500 .75rem system-ui,sans-serif; margin:0; color:#786954; }
+.character-description { display:block; margin:0 4px; font-size:.75rem; font-weight:400; line-height:1.4; color:#786954; }
+.roster-feedback { margin-top:16px; color:#477557; font-size:.9rem; }
+.finish-roster { display:block; margin:12px 0 0 auto; }
+.lineup { position:absolute; left:16px; top:65px; font-size:.85rem; padding:6px 10px; border-radius:12px; background:var(--panel); }
+@media (max-width:600px) {
+  .character-dialog { padding:16px; }
+  .roster-grid { grid-template-columns:repeat(2,1fr); gap:8px; }
+  .character-art { height:140px; }
+  .character-card-title { flex-direction:column; align-items:flex-start; }
+  .lineup { position:static; font-size:.75rem; }
+  .roster-heading h2 { font-size:1.5rem; }
+}

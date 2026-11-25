@@ -28,7 +28,7 @@ test("once opened, the app loads without a network and says pairing needs one", 
 
   await context.setOffline(true);
   await page.reload();
-  await page.waitForSelector("h1:has-text('Motion Arcade')");
+  await page.waitForSelector("h1:has-text('Pickle Garden')");
   await page.waitForSelector("canvas");
   await page.waitForSelector("text=Cần mạng để ghép điện thoại");
 });

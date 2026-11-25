@@ -3,3 +3,10 @@ dist
 .git
 .scratch
 e2e
+.cert
+.env
+.env.*
+.playwright-mcp
+assets
+docs
+scripts

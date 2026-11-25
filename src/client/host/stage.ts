@@ -1,35 +1,20 @@
 import * as THREE from "three";
+import { makeCharacter, makePaddle, disposeCharacter } from "./characters";
+import { DEFAULT_CHARACTERS } from "../../shared/characters";
+export { makePaddle } from "./characters";
+import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { axisAngle, mul, type Quat, type Vec3 } from "../../shared/quat";
 import type { SwingKind } from "../../shared/gestures/swing";
 
 /** The phone's world has z up; the screen's has y up and looks down -z. */
 const TO_SCREEN: Quat = axisAngle([1, 0, 0], -Math.PI / 2);
 
-export const SLOT_COLORS = [0x4fd1a5, 0xffb454];
+export const SLOT_COLORS = [0xc76b50, 0x7a9c83];
 
 /**
  * A paddle modelled in the phone's own axes (handle towards the bottom
  * edge, face towards the screen), so a phone orientation applies to it directly.
  */
-export function makePaddle(color: number): THREE.Group {
-  const paddle = new THREE.Group();
-  const face = new THREE.Mesh(
-    new THREE.BoxGeometry(0.2, 0.26, 0.016),
-    new THREE.MeshStandardMaterial({ color, roughness: 0.5 }),
-  );
-  face.position.y = 0.2;
-  const rim = new THREE.Mesh(
-    new THREE.BoxGeometry(0.21, 0.27, 0.01),
-    new THREE.MeshStandardMaterial({ color: 0x1b2433 }),
-  );
-  rim.position.y = 0.2;
-  const handle = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.017, 0.02, 0.14, 12),
-    new THREE.MeshStandardMaterial({ color: 0x2b2f3a, roughness: 0.9 }),
-  );
-  paddle.add(rim, face, handle);
-  return paddle;
-}
 
 export function setFromPhone(target: THREE.Object3D, q: Quat) {
   const [x, y, z, w] = mul(TO_SCREEN, q);
@@ -57,42 +42,6 @@ export interface CourtSize {
 
 const SWING_SECONDS = 0.32;
 
-/** A simple original character: body, head and an arm holding a paddle. */
-function makeCharacter(color: number) {
-  const root = new THREE.Group();
-  const skin = new THREE.MeshStandardMaterial({ color: 0xf2c9a0, roughness: 0.8 });
-  const shirt = new THREE.MeshStandardMaterial({ color, roughness: 0.7 });
-  const body = new THREE.Mesh(new THREE.CapsuleGeometry(0.26, 0.5, 6, 14), shirt);
-  body.position.y = 0.82;
-  const legs = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.2, 0.14, 0.5, 12),
-    new THREE.MeshStandardMaterial({ color: 0x2b3550 }),
-  );
-  legs.position.y = 0.27;
-  const head = new THREE.Mesh(new THREE.SphereGeometry(0.21, 18, 14), skin);
-  head.position.y = 1.52;
-  const cap = new THREE.Mesh(
-    new THREE.SphereGeometry(0.22, 18, 10, 0, Math.PI * 2, 0, Math.PI / 2),
-    shirt,
-  );
-  cap.position.y = 1.55;
-  // The shoulder swings; the hand holds the paddle at arm's length.
-  const shoulder = new THREE.Group();
-  shoulder.position.set(0.3, 1.15, 0);
-  const arm = new THREE.Mesh(new THREE.CapsuleGeometry(0.06, 0.4, 4, 8), skin);
-  arm.rotation.x = -Math.PI / 2;
-  arm.position.z = -0.25;
-  const hand = new THREE.Group();
-  hand.position.z = -0.5;
-  const paddle = makePaddle(0xfff3c4);
-  paddle.scale.setScalar(1.5);
-  hand.add(paddle);
-  shoulder.add(arm, hand);
-  root.add(body, legs, head, cap, shoulder);
-  root.traverse((o) => (o.castShadow = true));
-  return { root, shoulder, paddle };
-}
-
 /** The 3D picture on the computer: renderer, lights and whatever is on show. */
 export class Stage {
   readonly scene = new THREE.Scene();
@@ -101,10 +50,13 @@ export class Stage {
   /** Close-up paddles shown in the lobby, one per phone. */
   private lobby = new THREE.Group();
   private lobbyPaddles: THREE.Group[] = [];
+  private mascot?: ReturnType<typeof makeCharacter>;
+  private selectedCharacters: string[] = [...DEFAULT_CHARACTERS];
   private swingKick = [0, 0];
   private court = new THREE.Group();
   private ball!: THREE.Mesh;
   private ballShadow!: THREE.Mesh;
+  private ballMarker!: THREE.Mesh;
   private characters: ReturnType<typeof makeCharacter>[] = [];
   /** Fades out a sudden correction to the ball's position (online play). */
   private ballOffset = new THREE.Vector3();
@@ -113,11 +65,15 @@ export class Stage {
     this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
     this.renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
     this.renderer.shadowMap.enabled = true;
-    this.scene.background = new THREE.Color(0x10151f);
-    this.scene.add(new THREE.HemisphereLight(0xffffff, 0x334455, 1.6));
+    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    this.renderer.toneMappingExposure = 1.15;
+    this.scene.background = new THREE.Color(0xf6f1e7);
+    this.scene.add(new THREE.HemisphereLight(0xffffff, 0xb4bea1, 1.6));
     const sun = new THREE.DirectionalLight(0xffffff, 2);
     sun.position.set(6, 14, 8);
     sun.castShadow = true;
+    sun.shadow.normalBias = 0.025;
     sun.shadow.mapSize.set(2048, 2048);
     Object.assign(sun.shadow.camera, { left: -12, right: 12, top: 12, bottom: -12 });
     this.scene.add(sun);
@@ -131,6 +87,7 @@ export class Stage {
       this.lobby.add(holder);
       this.lobbyPaddles[slot] = paddle;
     });
+    this.previewCharacter(DEFAULT_CHARACTERS[0]);
     this.scene.add(this.lobby);
     this.showLobby([]);
 
@@ -156,6 +113,30 @@ export class Stage {
       const spread = slots.length > 1 ? (slot === 0 ? -0.75 : 0.75) : 0;
       paddle.parent!.position.set(spread, -0.25, 0);
     });
+  }
+
+  previewCharacter(id: string) {
+    if (this.mascot) { this.lobby.remove(this.mascot.root); disposeCharacter(this.mascot); }
+    this.mascot = makeCharacter(id);
+    this.mascot.root.rotation.y = Math.PI - 0.2;
+    this.mascot.root.position.set(-0.85, -1.02, -0.3);
+    this.mascot.root.scale.setScalar(0.66);
+    this.mascot.paddle.rotation.x = -Math.PI / 3;
+    this.lobby.add(this.mascot.root);
+  }
+
+  setCharacter(side: number, id: string) {
+    this.selectedCharacters[side] = id;
+    const previous = this.characters[side];
+    if (!previous) return;
+    const next = makeCharacter(id);
+    next.root.position.copy(previous.root.position);
+    next.root.rotation.copy(previous.root.rotation);
+    next.root.visible = previous.root.visible;
+    this.court.remove(previous.root);
+    disposeCharacter(previous);
+    this.characters[side] = next;
+    this.court.add(next.root);
   }
 
   hideLobby() {
@@ -186,10 +167,10 @@ export class Stage {
       this.court.add(mesh);
       return mesh;
     };
-    flat(60, 60, 0x2e7d4f, 0); // grass
-    flat(w * 2 + 5, l * 2 + 7, 0x3b8f63, 0.004); // apron
-    flat(w * 2, l * 2, 0x2f6fb7, 0.008); // playing surface
-    flat(w * 2, kitchen * 2, 0x4aa3a1, 0.012); // the kitchen (non-volley zone)
+    flat(100, 100, 0xdce5ce, 0); // grass
+    flat(w * 2 + 5, l * 2 + 7, 0xe7c5a9, 0.004); // apron
+    flat(w * 2, l * 2, 0x739c8a, 0.008); // playing surface
+    flat(w * 2, kitchen * 2, 0xa6c3a4, 0.012); // the kitchen (non-volley zone)
     const line = (x: number, z: number, width: number, depth: number) =>
       (flat(width, depth, 0xffffff, 0.016).position.set(x, 0.016, z));
     const T = 0.05;
@@ -200,11 +181,16 @@ export class Stage {
       line(0, sz * (kitchen + l) / 2, T, l - kitchen);
     }
 
-    const net = new THREE.Mesh(
-      new THREE.PlaneGeometry(w * 2 + 0.6, netHeight),
-      new THREE.MeshStandardMaterial({ color: 0x10151f, transparent: true, opacity: 0.55, side: THREE.DoubleSide }),
+    // Real open mesh keeps the far player's ball visible through the net.
+    const strands: number[] = [];
+    for (let x = -w - 0.3; x <= w + 0.3; x += 0.12)
+      strands.push(x, 0, 0, x, netHeight, 0);
+    for (let y = 0; y <= netHeight; y += 0.1)
+      strands.push(-w - 0.3, y, 0, w + 0.3, y, 0);
+    const net = new THREE.LineSegments(
+      new THREE.BufferGeometry().setAttribute("position", new THREE.Float32BufferAttribute(strands, 3)),
+      new THREE.LineBasicMaterial({ color: 0x243c45, transparent: true, opacity: 0.65 }),
     );
-    net.position.y = netHeight / 2;
     const tape = new THREE.Mesh(
       new THREE.BoxGeometry(w * 2 + 0.6, 0.06, 0.03),
       new THREE.MeshStandardMaterial({ color: 0xffffff }),
@@ -220,28 +206,20 @@ export class Stage {
       post.castShadow = true;
       this.court.add(post);
     }
-    // A ring of trees so the court sits somewhere.
-    for (let i = 0; i < 22; i++) {
-      const angle = (i / 22) * Math.PI * 2;
-      const tree = new THREE.Group();
-      const trunk = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.18, 0.24, 1.4, 8),
-        new THREE.MeshStandardMaterial({ color: 0x6b4a2f }),
-      );
-      trunk.position.y = 0.7;
-      const crown = new THREE.Mesh(
-        new THREE.ConeGeometry(1.3, 3 + (i % 3) * 0.6, 9),
-        new THREE.MeshStandardMaterial({ color: i % 2 ? 0x2f8f57 : 0x3fa468 }),
-      );
-      crown.position.y = 2.8;
-      tree.add(trunk, crown);
-      tree.position.set(Math.cos(angle) * (15 + (i % 4)), 0, Math.sin(angle) * (19 + (i % 3)));
-      this.court.add(tree);
-    }
+    // Original Blender architecture; gameplay geometry remains exact and independent.
+    new GLTFLoader().load('/models/pickle-garden.glb', ({ scene }) => {
+      scene.traverse((object) => {
+        if (object instanceof THREE.Mesh) {
+          object.castShadow = true;
+          object.receiveShadow = true;
+        }
+      });
+      this.court.add(scene);
+    }, undefined, (error) => console.warn('Arena model unavailable; using the court alone.', error));
 
     this.ball = new THREE.Mesh(
       new THREE.SphereGeometry(0.075, 20, 14),
-      new THREE.MeshStandardMaterial({ color: 0xf6e94a, emissive: 0x554400 }),
+      new THREE.MeshStandardMaterial({ color: 0xffce38, emissive: 0x5c3500 }),
     );
     this.ball.castShadow = true;
     // A dark blob under the ball: the main cue for where it will land.
@@ -250,10 +228,15 @@ export class Stage {
       new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.4 }),
     );
     this.ballShadow.rotation.x = -Math.PI / 2;
-    this.court.add(this.ball, this.ballShadow);
+    this.ballMarker = new THREE.Mesh(
+      new THREE.RingGeometry(0.18, 0.22, 32),
+      new THREE.MeshBasicMaterial({ color: 0x96503f, transparent: true, opacity: 0.7, depthWrite: false }),
+    );
+    this.ballMarker.rotation.x = -Math.PI / 2;
+    this.court.add(this.ball, this.ballShadow, this.ballMarker);
 
     SLOT_COLORS.forEach((color, side) => {
-      const character = makeCharacter(color);
+      const character = makeCharacter(this.selectedCharacters[side]);
       if (side === 0) character.root.rotation.y = 0; // faces -z, towards the net
       else character.root.rotation.y = Math.PI;
       this.characters[side] = character;
@@ -266,7 +249,7 @@ export class Stage {
   showCourt(view: CourtView) {
     this.lobby.visible = false;
     this.court.visible = true;
-    this.scene.background = new THREE.Color(0x8fd3ff);
+    this.scene.background = new THREE.Color(0xf6f1e7);
     // A long lens from far away keeps both players upright in the side view.
     this.camera.fov = view === "side" ? 24 : 50;
     this.camera.updateProjectionMatrix();
@@ -275,14 +258,14 @@ export class Stage {
       this.camera.lookAt(0, 0.4, 0);
     } else {
       const sign = view === "behind-0" ? 1 : -1;
-      this.camera.position.set(0, 4.6, sign * 13.2);
+      this.camera.position.set(0, 6.4, sign * 14.6);
       this.camera.lookAt(0, 0.9, -sign * 1.5);
     }
   }
 
   hideCourt() {
     this.court.visible = false;
-    this.scene.background = new THREE.Color(0x10151f);
+    this.scene.background = new THREE.Color(0xf6f1e7);
   }
 
   /** Call when the ball's position was corrected, to blend instead of jump. */
@@ -295,11 +278,23 @@ export class Stage {
     this.ball.position.set(...frame.ball).add(this.ballOffset);
     this.ballShadow.position.set(this.ball.position.x, 0.02, this.ball.position.z);
     this.ballShadow.scale.setScalar(1 + this.ball.position.y * 0.25);
+    // Marks the current ground projection, not a predicted landing position.
+    this.ballMarker.position.set(this.ball.position.x, 0.025, this.ball.position.z);
 
     frame.players.forEach((p, side) => {
       const { root, shoulder, paddle } = this.characters[side];
       root.visible = !(frame.solo && side === 1);
-      root.position.set(p.x, 0, p.z);
+      const character = this.characters[side];
+      const distance = Math.hypot(p.x - root.position.x, p.z - root.position.z);
+      const moving = dt > 0 && distance / dt > 0.15 && distance < 1;
+      if (moving) character.stride += distance * 9;
+      const step = moving ? Math.sin(character.stride) : 0;
+      character.feet.forEach((foot, i) => {
+        const phase = step * (i === 0 ? 1 : -1);
+        foot.position.z = -0.06 + phase * 0.16;
+        foot.position.y = 0.09 + Math.max(0, phase) * 0.12;
+      });
+      root.position.set(p.x, moving ? Math.abs(step) * 0.035 : 0, p.z);
       const t = p.swingAge / SWING_SECONDS;
       if (t < 1) {
         // Sweep the arm through the stroke; ease out so it snaps then settles.

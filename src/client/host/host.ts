@@ -5,6 +5,8 @@ import { connect } from "../connection";
 import { sounds, unlockAudio } from "./audio";
 import { PickleballSession, type PlayMode } from "./pickleball";
 import { Stage } from "./stage";
+import { mountCharacterPicker } from "./character-picker";
+import { characterDesign, isCharacterId } from "../../shared/characters";
 
 const KIND_NAMES: Record<SwingKind, string> = {
   forehand: "Thuận tay",
@@ -29,15 +31,17 @@ export function showHost(app: HTMLElement) {
     <canvas></canvas>
     <div class="overlay lobby">
       <header>
-        <h1>Motion Arcade</h1>
+        <span class="eyebrow">MOTION ARCADE · PLAY TOGETHER</span>
+        <h1>Pickle Garden<span>Một chút vận động.<br>Một ngày vui hơn.</span></h1>
         <p>Mở <strong>${location.host}</strong> trên điện thoại rồi nhập mã phòng</p>
         <div class="code" aria-label="Mã phòng">····</div>
         <p class="status">Đang tạo phòng…</p>
       </header>
       <div class="phones"></div>
       <nav class="menu" aria-label="Chọn chế độ chơi">
-        <h2>Pickleball</h2>
-        <button data-mode="practice">Tập đánh</button>
+        <span class="eyebrow">HẸN NHAU TRÊN SÂN</span><h2>Chơi một ván nhé?</h2>
+        <section class="character-picker" aria-label="Chọn nhân vật"></section>
+        <button data-mode="practice">Vào sân tập<small>Làm quen với vợt, tìm nhịp của bạn</small></button>
         <div class="group">
           <span>Đấu với máy</span>
           <button data-mode="ai" data-level="easy">Dễ</button>
@@ -59,7 +63,8 @@ export function showHost(app: HTMLElement) {
     </div>
     <div class="overlay game" hidden>
       <div class="topbar">
-        <button class="quiet" data-act="menu">← Menu</button>
+        <button class="quiet" data-act="menu">Về vườn</button>
+        <span class="lineup" aria-label="Nhân vật trong trận"></span>
         <span class="room"></span>
       </div>
       <div class="hud"></div>
@@ -80,6 +85,12 @@ export function showHost(app: HTMLElement) {
   addEventListener("keydown", unlockAudio);
 
   const stage = new Stage($<HTMLCanvasElement>("canvas"));
+  const picker = mountCharacterPicker($(".character-picker"), id => stage.previewCharacter(id));
+  let matchCharacters: [string, string] = picker.getSelection();
+  function showLineup() {
+    $(".lineup").textContent = matchCharacters.map(id => characterDesign(id).name).join(" · ");
+    $(".lineup").dataset.characters = matchCharacters.join(",");
+  }
   const phones: Phone[] = [];
   let session: PickleballSession | undefined;
   let mode: PlayMode | undefined;
@@ -138,6 +149,11 @@ export function showHost(app: HTMLElement) {
       say: (slot, text) => toPhones({ k: "say", text }, slot),
       buzz: (slot, ms) => toPhones({ k: "buzz", ms }, slot),
     });
+    const chosen = picker.getSelection();
+    matchCharacters = next.kind === "online" && next.side === 1 ? [chosen[1], chosen[0]] : chosen;
+    matchCharacters.forEach((id, side) => stage.setCharacter(side, id));
+    showLineup();
+    if (next.kind === "online") conn.send({ type: "to-opponent", data: { k: "character", id: chosen[0] } });
     updatePause();
   }
 
@@ -237,7 +253,19 @@ export function showHost(app: HTMLElement) {
           onlineStatus("Đối thủ đã rời trận hoặc chưa sẵn sàng.");
         }
       } else if (msg.type === "from-opponent") {
-        if (mode?.kind === "online") session?.onRemote(msg.data);
+        if (mode?.kind === "online") {
+          const data = msg.data as { k?: unknown; id?: unknown } | null;
+          if (data && (data.k === "character" || data.k === "character-reply")) {
+            if (isCharacterId(data.id)) {
+              const opponent = mode.side === 0 ? 1 : 0;
+              matchCharacters[opponent] = data.id;
+              stage.setCharacter(opponent, data.id);
+              showLineup();
+              // Reply handles either peer entering the match first, without a loop.
+              if (data.k === "character") conn.send({ type: "to-opponent", data: { k: "character-reply", id: matchCharacters[mode.side] } });
+            }
+          } else session?.onRemote(msg.data);
+        }
       } else if (msg.type === "error") {
         if (msg.reason === "match-not-found") onlineStatus("Không tìm thấy trận với mã này.");
         else if (msg.reason === "match-full") onlineStatus("Trận này đã đủ hai người.");
