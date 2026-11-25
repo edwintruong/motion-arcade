@@ -15,8 +15,8 @@ function rally() {
 test("screen-right movement is mirrored on the opposite court; stale input returns to assistance", () => {
   const m = rally();
   m.move(0, 1, 0); m.move(1, 1, 0); m.step(.2);
-  expect(m.state.players[0].x).toBeCloseTo(1);
-  expect(m.state.players[1].x).toBeCloseTo(-1);
+  expect(m.state.players[0].x).toBeCloseTo(.9);
+  expect(m.state.players[1].x).toBeCloseTo(-.9);
   m.step(.4);
   expect(m.state.players[0].x).toBeCloseTo(0);
 });
@@ -25,17 +25,21 @@ test("diagonal motion cannot boost running speed and players cannot cross the ne
   const m = rally(); const p = m.state.players[0];
   const before = { x: p.x, z: p.z };
   m.move(0, 1, -1); m.step(.2);
-  expect(Math.hypot(p.x - before.x, p.z - before.z)).toBeCloseTo(1);
+  const distance = Math.hypot(p.x - before.x, p.z - before.z);
+  expect(distance).toBeGreaterThan(.5);
+  expect(distance).toBeLessThanOrEqual(1);
   for (let i = 0; i < 40; i++) { m.move(0, 1, -1); m.step(.2); }
   expect(p.x).toBeLessThanOrEqual(COURT.halfWidth + 1.5);
   expect(p.z).toBeGreaterThanOrEqual(.5);
 });
 
-test("motion does not change serve positions; neutral explicitly restores assistance", () => {
+test("sidestepping before serving stays in the service box and behind the baseline", () => {
   const m = new Match({ mode: "match" });
   const x = m.state.players[0].x;
   m.move(0, 1, 0); m.step(.2);
-  expect(m.state.players[0].x).toBe(x);
+  expect(m.state.players[0].x).toBeGreaterThan(x);
+  expect(m.state.players[0].x).toBeLessThan(COURT.halfWidth);
+  expect(m.state.players[0].z).toBeGreaterThan(COURT.halfLength);
   const practice = rally(); practice.move(0, 1, 0); practice.step(.2);
   practice.move(0, 0, 0); practice.step(.1);
   expect(practice.state.players[0].x).toBeLessThan(1);
@@ -62,4 +66,16 @@ test("hit cue respects the two-bounce and kitchen rules", () => {
   expect(m.canHit(0)).toBe(false);
   m.state.bounces = 1;
   expect(m.canHit(0)).toBe(true);
+});
+
+test.each([0, -1, 1])("automatic interception still reaches a wide ball with steering %s", x => {
+  const m = new Match({mode:'practice',rng:() => .99});
+  let reached = false;
+  for (let t = 0; t < 5; t += 1 / 120) {
+    m.move(0, x, 0);
+    m.step(1 / 120);
+    if (m.canHit(0)) { reached = true; break; }
+  }
+  expect(reached).toBe(true);
+  expect(m.state.players[0].x).toBeGreaterThan(.7);
 });

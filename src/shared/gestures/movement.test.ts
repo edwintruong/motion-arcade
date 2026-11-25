@@ -49,3 +49,45 @@ test("stale motion samples stop steering; recalibration centers the new grip", (
   d.calibrate(yaw(-30));
   expect(hold(d, yaw(-30), 1400)).toEqual({ x: 0, y: 0 });
 });
+
+test.each([-1, 1])("a sideways hand translation %s steers without changing orientation", direction => {
+  const d = new MovementDetector(); d.calibrate(IDENTITY);
+  for (let t = 0; t <= 100; t += 20) {
+    d.motion(0,t);
+    d.acceleration(IDENTITY,[direction * 2,0,0],t);
+  }
+  expect(d.update(IDENTITY,100).x * direction).toBeGreaterThan(.5);
+  // Braking is opposite acceleration, not a request to reverse direction.
+  for (let t = 120; t <= 240; t += 20) {
+    d.motion(0,t);
+    d.acceleration(IDENTITY,[-direction * 2,0,0],t);
+  }
+  expect(d.update(IDENTITY,240).x * direction).toBeGreaterThan(.5);
+  expect(hold(d,IDENTITY,1000)).toEqual({x:0,y:0});
+});
+
+test("a swing cancels lateral steering and vertical shake is not a sidestep", () => {
+  const d = new MovementDetector(); d.calibrate(IDENTITY);
+  for (let t = 0; t <= 100; t += 20) {
+    d.motion(0,t); d.acceleration(IDENTITY,[0,0,4],t);
+  }
+  expect(d.update(IDENTITY,100)).toEqual({x:0,y:0});
+  for (let t = 120; t <= 220; t += 20) {
+    d.motion(0,t); d.acceleration(IDENTITY,[2,0,0],t);
+  }
+  expect(d.update(IDENTITY,220).x).toBeGreaterThan(.5);
+  d.motion(800,240);
+  expect(d.update(IDENTITY,240)).toEqual({x:0,y:0});
+});
+
+test("after the stroke settles, a deliberate sidestep works even before returning to neutral", () => {
+  const d = new MovementDetector(); d.calibrate(IDENTITY);
+  const followThrough = axisAngle([1,0,0], .5);
+  d.motion(800,100);
+  expect(hold(d,followThrough,120,0)).toEqual({x:0,y:0});
+  for (let t = 800; t <= 900; t += 20) {
+    d.motion(0,t); d.acceleration(followThrough,[2,0,0],t);
+  }
+  expect(d.update(followThrough,900).x).toBeGreaterThan(.5);
+  expect(d.update(followThrough,900).y).toBe(0);
+});

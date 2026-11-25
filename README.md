@@ -48,8 +48,9 @@ Cách đưa lên web lâu dài: xem [docs/DEPLOY.md](docs/DEPLOY.md). Bản đã
 
 1. Cầm điện thoại như cán vợt, bấm **Bật cảm biến chuyển động**.
 2. Chĩa đầu điện thoại vào màn hình rồi bấm **Căn chỉnh**.
-3. Giữ điện thoại ở tư thế đã căn chỉnh để nhân vật tự chạy tới bóng. Muốn chủ động di chuyển, hướng nhẹ đầu điện thoại trái/phải; hạ đầu để tiến, nâng đầu để lùi. Không cần bấm thêm nút.
-   - Hướng càng xa tư thế trung tâm, chạy càng nhanh. Sau cú vung, trở về tư thế căn chỉnh trước khi điều hướng tiếp để tránh chạy nhầm theo đà tay.
+3. Nhân vật luôn tự chạy đón bóng, kể cả khi bạn đứng tại chỗ trong phòng hẹp. Dịch tay cầm điện thoại một đoạn ngắn sang trái/phải để chỉnh vị trí; không cần đi lại hoặc bấm thêm nút.
+   - Cảm biến gia tốc nhận một cử chỉ dịch ngang, không đo vị trí của bạn trong phòng. Nếu điện thoại không cung cấp gia tốc không trọng lực, vẫn có thể hướng nhẹ đầu điện thoại trái/phải, hạ để tiến, nâng để lùi.
+   - Điều khiển chỉ chỉnh vị trí quanh điểm đón bóng. Khi bóng tới gần, game ưu tiên đưa nhân vật vào tầm đánh. Sau cú vung, đưa điện thoại về tư thế căn chỉnh để tiếp tục điều hướng.
    - Khi hiện **Đánh ngay!**, bóng đang trong tầm đánh hợp lệ. Game hỗ trợ cú vung sớm tối đa 0,18 giây, không tự đánh thay bạn.
    - Vung sớm hay muộn làm bóng lệch sang hai bên; vung mạnh thì bóng đi nhanh và sâu, mạnh quá thì ra ngoài.
    - Vung ngang là thuận tay hoặc trái tay, hất lên là lốp, chém xuống là đập.

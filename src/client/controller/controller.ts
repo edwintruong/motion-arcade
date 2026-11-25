@@ -33,7 +33,7 @@ export function showController(app: HTMLElement) {
         <li>Cầm điện thoại như cán vợt, màn hình hướng sang bên, nắm thật chắc.</li>
         <li>Chĩa đầu điện thoại vào màn hình máy tính rồi bấm <b>Căn chỉnh</b>.</li>
         <li>Vung ngang để đánh, hất lên để lốp, chém xuống để đập.</li>
-        <li>Hướng nhẹ đầu điện thoại sang trái/phải để chạy; hạ đầu để tiến, nâng để lùi. Trở về tư thế căn chỉnh để tự đón bóng.</li>
+        <li>Dịch tay cầm điện thoại một đoạn ngắn sang trái/phải để chỉnh vị trí. Có thể hướng nhẹ đầu điện thoại; nhân vật vẫn tự chạy đón bóng, không cần đi lại trong phòng.</li>
         <li>Đứng xa người và đồ vật xung quanh.</li>
       </ol>
       <button data-act="enable">Bật cảm biến chuyển động</button>
@@ -45,7 +45,7 @@ export function showController(app: HTMLElement) {
       <div class="motion-feedback" aria-label="Điều khiển chuyển động">
         <span class="movement">Tự đón bóng</span>
         <div class="power"><i></i></div>
-        <small>Vung nhẹ → bóng nhẹ · Vung nhanh → bóng mạnh<br>Sau cú đánh, đưa điện thoại về tư thế căn chỉnh</small>
+        <small>Dịch tay trái/phải để chỉnh vị trí · Không cần đi lại<br>Nhân vật luôn tự đón bóng<br>Vung nhẹ → bóng nhẹ · Vung nhanh → bóng mạnh</small>
       </div>
       <button data-act="calibrate">Căn chỉnh<small>Chĩa điện thoại vào màn hình rồi bấm</small></button>
       <button data-act="hand" class="quiet"></button>
@@ -92,7 +92,7 @@ export function showController(app: HTMLElement) {
       toHost({ k: "move", ...movement });
       const { x, y } = movement;
       $(".movement").textContent = Math.hypot(x, y) < 0.08 ? "Tự đón bóng" :
-        `${y < -0.1 ? "↑ Tiến " : y > 0.1 ? "↓ Lùi " : ""}${x < -0.1 ? "← Trái" : x > 0.1 ? "→ Phải" : ""}`;
+        `${y < -0.1 ? "↑ Tiến " : y > 0.1 ? "↓ Lùi " : ""}${x < -0.1 ? "← Trái" : x > 0.1 ? "→ Phải" : ""} · vẫn tự đón bóng`;
     },
     onOrientation: (q) => toHost({ k: "o", q }),
     onSwing(swing) {

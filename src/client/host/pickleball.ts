@@ -67,7 +67,7 @@ export class PickleballSession {
     hud.innerHTML = `
       <div class="scoreboard"></div>
       <div class="banner"></div>
-      <div class="play-guide">Hướng điện thoại để di chuyển · Về tư thế căn chỉnh để tự đón bóng · Vung nhanh/chậm để chọn lực</div>
+      <div class="play-guide">Nhân vật tự đón bóng · Dịch tay trái/phải để chỉnh vị trí · Vung để đánh · Không cần đi lại trong phòng</div>
       <div class="hit-cue" aria-live="polite"></div>
       <div class="result" hidden><h2></h2><p>Vung vợt để chơi lại</p></div>`;
     this.el = hud;

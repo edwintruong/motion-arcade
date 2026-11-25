@@ -67,6 +67,9 @@ export class Sensors {
       this.movement.motion(speed, now);
       if (speed >= 180) this.handlers.onMove?.({ x: 0, y: 0 });
       if (document.visibilityState !== "visible") return;
+      const a = e.acceleration; // Gravity-free; do not turn gravity into sideways motion.
+      if (a && a.x !== null && a.y !== null && a.z !== null)
+        this.movement.acceleration(this.current(), [a.x, a.y, a.z], now);
       const swing = this.detector.push({
         t: now,
         // The browser names rates by axis: beta = x, gamma = y, alpha = z.

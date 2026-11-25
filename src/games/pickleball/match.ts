@@ -86,7 +86,7 @@ const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
 /**
  * One game of pickleball singles: ball, players, rules and score.
  * Pure simulation: feed it swings and time, read `state` and events.
- * Players auto-position unless steered by a live phone movement input.
+ * Players always auto-position; phone movement adjusts their stance near that target.
  */
 export class Match {
   readonly state: {
@@ -445,12 +445,6 @@ export class Match {
       return;
     }
     const input = this.movement[side];
-    if (s.phase === "rally" && input.until > this.time && Math.hypot(input.x, input.y) > 0.08) {
-      const stride = this.opts.speeds[side] * STEP;
-      me.x = clamp(me.x + input.x * sign * stride, -COURT.halfWidth - 1.5, COURT.halfWidth + 1.5);
-      me.z = sign * clamp(me.z * sign + input.y * stride, 0.5, COURT.halfLength + 2.5);
-      return;
-    }
     let x = 0;
     let z = sign * HOME_DEPTH;
 
@@ -476,6 +470,22 @@ export class Match {
         z = sign * clamp(depthOn(side, ball.p) + ball.v[2] * sign * 0.15, 0.5, COURT.halfLength + 2.5);
       }
       x = clamp(x, -COURT.halfWidth - 1.5, COURT.halfWidth + 1.5);
+    }
+
+    // Always chase the ball. Motion adjusts the stance, not the obligation to run.
+    // As the ball arrives, shrink the adjustment to keep it within paddle reach.
+    if ((s.phase === "rally" || s.phase === "serve") && input.until > this.time) {
+      const receiving = s.phase === "rally" && s.lastHitter !== side;
+      const close = receiving && (s.bounces > 0 || Math.hypot(s.ball.p[0] - me.x, s.ball.p[2] - me.z) < 3);
+      const adjustment = close ? .2 : .9;
+      x = clamp(x + input.x * sign * adjustment, -COURT.halfWidth - 1.5, COURT.halfWidth + 1.5);
+      const minDepth = s.bounces === 0 ? COURT.kitchen + .25 : .5;
+      z = sign * clamp(z * sign + input.y * adjustment * .6, minDepth, COURT.halfLength + 2.5);
+      if (s.phase === "serve" && this.opts.mode === "match" && side === s.score.server) {
+        const boxSign = Math.sign(this.serveX(side));
+        x = boxSign * clamp(x * boxSign, .3, COURT.halfWidth - .3);
+        z = sign * Math.max(COURT.halfLength + .3, z * sign);
+      }
     }
 
     const dx = x - me.x;
